@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link href="css/reset.css" rel="stylesheet" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1024" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="shortcut icon" href="css/favicon.png" />
+    <link rel="apple-touch-icon" href="css/apple-touch-icon.png" />
+    <!-- Code Prettifier: -->
+<link href="css/highlight.css" type="text/css" rel="stylesheet" />
+<script type="text/javascript" src="js/highlight.pack.js"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+
+    <link href="css/style.css" rel="stylesheet" />
+<link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,800italic,300,400,800' rel='stylesheet' type='text/css'>    
+
+
+  </head>
+
+  <body>
+  <div class="fallback-message">
+  <p>Your browser <b>doesn't support the features required</b> by impress.js, so you are presented with a simplified version of this presentation.</p>
+  <p>For the best experience please use the latest <b>Chrome</b>, <b>Safari</b> or <b>Firefox</b> browser.</p>
+  </div>
+    <div id="impress">
+    <div class='step' >
+    
+<h1>Gestion de la mémoire en ObjectiveC-2.0</h1>
+
+<h2>HEINRICH Yannick</h2>
+
+<h2><a href="http://clang.llvm.org/docs/AutomaticReferenceCounting.html">@YaGeek</a></h2>
+
+<h2><a href="http://blog.yageek.net">http//blog.yageek.net</a></h2>
+
+<h2>Mars 2013</h2>
+
+<p><a href="http://creativecommons.org/licenses/by-sa/3.0"><img src="images/cc.png" alt="Creative Commons License"></a></p>
+</div>
+      <div class='step' >
+    
+<h1>Les bases</h1>
+
+<ul>
+<li>  Objective-C : Langage C + paradigme objet</li>
+<li>  L&#39;allocation/désallocation sur le tas passe par les appels systèmes connues de la libC</li>
+<li>  Allocation des objets sur la pile quasi-interdite (sauf les <em>fermetures</em>)</li>
+<li>  Langage dynamique à cause du <strong>moteur d&#39;exécution</strong> (différent de C, C++, ASM, LISP,...)</li>
+</ul>
+</div>
+      <div class='step' >
+    
+<h1>Allocation</h1>
+
+<ul>
+<li>  Compteur de référence: désallocation de l&#39;objet lorsque le compteur est nul</li>
+<li>  Classe &#39;racine&#39; : NSObject</li>
+<li>  Chaque objet hérite de NSObject directement ou indirectement : <strong>c&#39;est lui qui gère l&#39;allocation/désallocation pour tout ses enfants</strong></li>
+</ul>
+</div>
+      <div class='step'  data-x="1000" data-scale="2">
+    
+<h1>MAObject</h1>
+<pre><code class='prettyprint '>@implementation MAObject {
+    Class isa;
+    volatile int32_t retainCount; //Compteur de référence
+}
+  + (id)alloc
+{   //Appel au moteur d'éxecution pour instancier
+    MAObject *obj = calloc(1, class_getInstanceSize(self)); 
+    obj->isa = self;
+    obj->retainCount = 1; // Mise à 1
+    return obj;
+}
+ - (id)retain
+{   //Incrémentation atomique
+    OSAtomicIncrement32(&retainCount);
+    return self;
+}
+- (oneway void)release
+{   //Décrémentation atomique
+    uint32_t newCount = OSAtomicDecrement32(&retainCount);
+    if(newCount == 0) //Si le compteur < 0 -> désallocation
+        [self dealloc];
+}
+</code></pre></div>
+      <div class='step' >
+    <pre><code class='prettyprint '> - (void)dealloc
+{   //Appel système standard
+    free(self);
+}
+ - (id)init
+{
+    return self;
+}    
+- (id)autorelease
+{
+    [NSAutoreleasePool addObject: self];
+    return self;
+}
+- (NSUInteger)retainCount
+{
+    return retainCount;
+}
+</code></pre>
+<p>L&#39;utilisation du moteur d&#39;exécution dans la fonction alloc :</p>
+<pre><code class='prettyprint '>   MAObject *obj = calloc(1, class_getInstanceSize(self)); 
+</code></pre>
+<p>permet d&#39;allouer la mémoire pour tout les objets.</p>
+</div>
+      <div class='step' >
+    
+<h1>Propriétaires</h1>
+
+<p>L&#39;implémentation des compteurs de référence permet de réfléchir en terme de <strong>propriété sur un objet</strong> plutôt qu&#39;en terme d&#39;allocation/désallocation mémoire à la <strong>malloc/free</strong></p>
+
+<h2>Convention</h2>
+
+<ul>
+<li>  Toute fonction <strong>contenant alloc, copy ou commencant par new</strong> renvoie une objet dont le compteur de référence vaut <strong>1</strong></li>
+<li>  Un appel à <strong>retain</strong> incrémente le compteur de 1</li>
+<li>  Un appel à <strong>release</strong> décrémente le compteur de 1</li>
+</ul>
+</div>
+      <div class='step' >
+    
+<h1>Propriétaires d&#39;un objet</h1>
+
+<p>Le ou les propriétaires d&#39;un objet sont les derniers objet ayant appellé <strong>alloc</strong>, <strong>copy</strong>, <strong>new</strong>, <strong>retain</strong> ou équivalents et n&#39;ayant pas appellé <strong>release</strong> par la suite. Comme aucune allocation d&#39;objet sur la pile n&#39;est toléré, lorsque l&#39;on parle de <strong>propriétaires</strong>, on dit que le <strong>pointeur possède l&#39;objet qu&#39;il pointe en mémoire.</strong></p>
+<pre><code class='prettyprint '>    NSString * foo = [[NSString] alloc] init];
+
+    // foo -> (NSString @ 0xFEBCD) 
+    // Le pointeur 'foo' possède l'objet à l'adresse 0xFEBCD - RefCount = 1
+
+    NSString *foo2 = [foo retain];
+    //foo et foo2 -> (NSString @ 0xFEBCD)
+    // Les deux pointeurs possède l'objet à l'adresse 0xFEBCD - RefCount = 2
+
+    [foo release];
+    // foo ne possède plus l'objet à l'adresse 0xFEBCD -  RefCount = 1
+    // foo2 le possède encore
+
+    [foo2 release]
+    //Plus personne ne possèdent l'objet - RefCount = 0  -> désallocation
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Construire et initialiser un objet</h1>
+
+<h2>Construction</h2>
+
+<p>On se sert de la méthode alloc de NSObject</p>
+<pre><code class='prettyprint '> Foo* foo = [Foo alloc];
+</code></pre>
+<h2>Initialisation</h2>
+
+<p>Allouer la classe ne suffit pas, il nous faut l&#39;initialiser.</p>
+<pre><code class='prettyprint '> //Mauvaise pratiques
+ Foo* foo = [Foo alloc];
+ [foo initOfFoo];
+ //Bonne pratiques
+ Foo *foo = [[Foo alloc] initOfFoo];
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Initialiser un objet</h1>
+
+<p>Exemple : une classe <em>Personne</em></p>
+<pre><code class='prettyprint '>@interface TShirt {
+
+    NSUInteger _taille;
+    NSColor * _couleur;
+
+}
+@end
+</code></pre>
+<p>Quelles sont les bonnes pratiques pour l&#39;initialisation ?</p>
+</div>
+      <div class='step' >
+    
+<h1>Initialiser un objet</h1>
+
+<p>Chaque classe doit avoir un <strong>initialiseur désigné</strong>, c&#39;est celui qui est en charge d&#39;initialiser toutes les valeurs qui <strong>conditionnent la vie de l&#39;objet</strong></p>
+<pre><code class='prettyprint '> @implementation TShirt
+
+- (id) initWithTaille:(NSUInteger * )taille AndCouleur:(NSColor *) couleur
+{
+    if(self = [super init])
+    {
+        _taille = taille
+        _couleur = [couleur retain];
+    }
+    return self;
+}
+@end
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Initialiser un objet</h1>
+
+<p>Tous les autres initialiseurs doivent finir par appeler l&#39;<strong>initialiseur désigné</strong></p>
+<pre><code class='prettyprint '>@implementation TShirt
+// ...
+- (id) initWithTaille:(NSUInteger) taille
+{
+    NSColor * defaut = [NSColor redColor];
+    return [self initWitTaille:taille AndCouleur:default];
+}    
+- (id) initWithColor:(NSColor * ) couleur
+{
+    NSUInteger default = 36;
+    return [self initWitTaille:default AndCouleur:couleur];
+}
+@end
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Échec dans l&#39;initialisation</h1>
+
+<p>Lors de l&#39;échec dans l&#39;initialiseurs :</p>
+
+<ol>
+<li> Libérér les ressources non désallouées dans <strong>dealloc</strong> (objet, connexion ultérieurement libéré dans <strong>init</strong>)</li>
+<li> Libérer <strong>self</strong> qui possède un compteur de 1 à cause de l&#39;appel à <strong>alloc</strong></li>
+<li> Retournez <strong>nil</strong></li>
+</ol>
+</div>
+      <div class='step' >
+    
+<h1>Exemple</h1>
+<pre><code class='prettyprint '>@implementation Tableaux
+//Possède deux iVar : _tab1 -> NSMutableArray et _tab2 -> NSArray
+- (id) init
+{
+    if([self = super init])   //RefCounter = 1
+    {
+        _tab1 = [[NSMutableArray alloc] init];
+        if(!_tab)//Si erreur
+        {
+            [self release];    //RefCount=0->self dealloc
+            return nil;        //Retour erreur
+        }
+        _tab2 = [[NSArray alloc] initWithContentsOfFile:@"…"];
+        if(!_tab2)
+        {
+            [self release];   //RefCount=0->self dealloc
+            return nil;   //Retour erreur;
+        }
+    }
+    returl self;
+}
+- (void) dealloc
+{
+    [_tab1 release];   //Désallocation
+    [_tab2 release];   //Désallocation
+    [super dealloc];
+    //Rappel : envoyer un message à nil ne fait rien 
+    //-> pas besoin de tester if(!_tab1) [_tab1 release];
+}
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Destruction d&#39;une classe</h1>
+
+<ul>
+<li>  Toujours appeller <strong>[super dealloc]</strong> en dernier dans la méthode <strong>dealloc</strong> de la classe</li>
+</ul>
+
+<h2>Bon exemple:</h2>
+<pre><code class='prettyprint '> - (void) dealloc
+ {
+    [_couleur release];
+    [super dealloc]; // NSObject se charge de désallouer 
+}
+</code></pre>
+<h2>Mauvais exemple:</h2>
+<pre><code class='prettyprint '> - (void) dealloc
+ {
+    [super dealloc]; // Désallocation de la classe
+    [_couleur release]; //Erreur pointeur invalide car désalloué
+}
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Remarque</h1>
+
+<ul>
+<li>  Cela ne sert à rien de mettre des variables à nil dans <strong>dealloc</strong>. Si vous devez le faire, c&#39;est un problème de conception.</li>
+<li>  On peut se dire que si l&#39;appel à [super dealloc] désalloue la classe, ce n&#39;est pas nécessaire d&#39;appeller release</li>
+</ul>
+</div>
+      <div class='step' >
+    
+<h2>FAUX</h2>
+<pre><code class='prettyprint '>@interface A : NSObject {} @end
+@interface B : NSObject
+{
+    A *a;
+}
+- (id) dealloc
+{
+    [a release];
+    [super dealloc];
+}
+@end
+@interface : NSObject C
+{
+    A *a;
+}
+- (id) dealloc
+{
+    [super dealloc];
+    [a release]; //Release n'est jamais envoyé à a
+}
+@end
+
+A *a = [[A alloc] init];   //a RefCounter = 1
+B * b = [[B alloc] init];
+C *c = [[C alloc] init];
+
+B->a = [a retain];   //a RefCounter = 2
+C->a = [a retain];   //a RefCounter = 3
+
+[a release]; //a RefCounter = 2
+
+[b release]; //a RefCounter = 1 -> message release envoyé dans dealloc de B
+[c release]; //a RefCounter = 1 -> message non envoyé -> fuite mémoire
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Copie d&#39;objet</h1>
+
+<ul>
+<li>  Implémentation du protocol <strong>NSCopying</strong> et de la méthode <strong>copyWithZone:</strong> qui est appellé par <strong>copy</strong></li>
+<li>  L&#39;argument <strong>NSZone</strong> est un héritage et n&#39;est plus utilisé</li>
+<li>  Implémentation dépend de la sémantique voulue</li>
+</ul>
+</div>
+      <div class='step' >
+    
+<h1>Copie d&#39;objet</h1>
+
+<ul>
+<li>  Les objets de bases du Frameworks présentent une version <strong>mutable</strong> et une version <strong>immuable</strong></li>
+<li>  Immuable : <strong>l&#39;objet pointé en mémoire</strong> est immuable</li>
+<li>  Mutable : <strong>l&#39;objet pointé en mémoire</strong> est mutable</li>
+<li>  Objet immuable ne veut pas dire pointeur immuable</li>
+</ul>
+</div>
+      <div class='step' >
+    
+<h1>Copie d&#39;un objet</h1>
+
+<ul>
+<li>Copie d&#39;un objet dont la représentation en mémoire ne change pas (immuable) = copie superficielle. Faire la copie d&#39;un objet immuable.</li>
+<li>Copie d&#39;un objet mutable = copie profonde</li>
+</ul>
+</div>
+      <div class='step' >
+    
+<h1>Exemple avec NSString</h1>
+
+<p>Pointeur immuable ne veut pas dire pointeur immuable :</p>
+<pre><code class='prettyprint '> NSString * string1 = @"String 1"; 
+ string1 = @"Autre chose que String1"; //Le pointeur peut changer
+                                       // @"String 1" ne change pas en mémoire
+</code></pre>
+<p>La méthode <strong>copy</strong> de NSString incrémente le compteur de référence de l&#39;objet et renvoie le même objet pointé :</p>
+<pre><code class='prettyprint '>NSString * string1 = @"HELLO";
+NSString* copyOfString1 = [string1 copy];
+
+BOOL equal = (string1 == copyOfString1) ; // -> equal = YES
+</code></pre></div>
+      <div class='step' >
+    
+<h1>En pratique</h1>
+<pre><code class='prettyprint '> //Une copie superficelle 
+ - (id) copyWithZone:(NSZone *)
+ {
+    return [self retain];
+ }
+
+
+ //Une copie profonde (classe héritant de NSObject directement)
+ //Classe TShirt
+
+ - (id) copyWithZone:(NSZone *zone)
+ {
+    //[self class] obligatoire pour les classes filles
+    id copie = [[[self class] allocWithZone:zone]
+              initWithTaille:[self taille] AndCouleur:[self couleur]];
+     return copie;
+ } 
+
+ //Une copie profonde (classe fille dont la mère implémente une copy)
+ //Classe héritant de TShirt
+
+ - (id) copyWithZone:(NSZone *zone)
+ {
+    id copie = [super copyWithZone:zone];
+
+    /* Autre opérations éventuelles */
+    return copie;
+ } 
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Autorelease pools</h1>
+
+<ul>
+<li>Les pools ou bassins de libérations automatiques permettent de gérer les cas de <strong>transmissions de propriété</strong>,à la création de <strong>constructeurs de commodités</strong> ou de libérer de la mémoire occupée inutilement.</li>
+<li>Dans les applications graphiques (iOS ou Cocoa), un pool de libération est crée automatiquement dans la boucle d&#39;évènement (NSRunLoop)</li>
+<li>Dans les applications non graphiques, le pool doit être explicitement crée.</li>
+</ul>
+</div>
+      <div class='step' >
+    
+<h1>Libérer de la mémoire</h1>
+<pre><code class='prettyprint '>//Mémoire perdue
+@interface Copieur : NSObject
+{
+        NSArray * _chemins_a_copier; // Très grand 
+        NSString * _destination;
+}
+@end
+/*..*/
+for(NSString * chemin in _chemins_a_copier)
+{
+NSString * _nouveau_chemin = [_destination stringByAppendingPathComponent:chemin];
+
+    /* Longue opération */
+}
+
+//Beaucoup mieux
+for(NSString * chemin in _chemins_a_copier)
+{
+NSAutorelease * pool = [[NSAutoreleasePool alloc] init];
+NSString * _nouveau_chemin = [_destination stringByAppendingPathComponent:chemin];
+
+    /* Longue opération */     
+
+    [pool release];
+}
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Autorelease</h1>
+
+<ul>
+<li>  On ajoute un objet dans le pool courant en lui envoyant le message <strong>autorelease</strong></li>
+<li>  À chaque appelle de la méthode <strong>release</strong> du pool, un message <strong>release</strong> est envoyé à chacun des objets présents dans le pool</li>
+<li>  Si on appellé N fois la méthode <strong>autorelease</strong> sur un objet, il faudra appellé N fois la méthode <strong>release</strong> du pool</li>
+</ul>
+</div>
+      <div class='step' >
+    
+<h1>Boucle d&#39;évènements</h1>
+
+<p><img src="images/run_loop.jpg" alt="Creative Commons License"></p>
+</div>
+      <div class='step' >
+    
+<h1>Boucle d&#39;évènements</h1>
+
+<p><em>The Application Kit creates an autorelease pool on the main thread at the beginning of every cycle of the event loop, and drains it at the end, thereby releasing any autoreleased objects generated while processing an event.</em></p>
+<pre><code class='prettyprint '>  //En pseudo code
+  intUIApplicationMain(...)
+  {
+    while(!shouldQuitApplication)
+    {
+
+    UIEvent*someEvent =// Attente d'un évènement;
+
+    NSAutoreleasePool*myPool =[[NSAutoreleasePool alloc] init];
+
+    /* Traitement d'un évement :
+        - Action sur un bouton
+        - Connexion entrante
+        - Notification
+       ....
+    */
+    [myPool release];
+    }
+  }
+</code></pre>
+<p>Chaque thread possède sa propre boucle d&#39;évènements.</p>
+</div>
+      <div class='step' >
+    
+<h1>Exemple</h1>
+<pre><code class='prettyprint '>    //Un bassin a été crée avant d'appeller la méthode 
+    NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
+
+   - (IBAction) buttonClicked:(id)sender
+   { 
+
+     NSString * message = [NSString stringWithFormat:@"Sender : %p",sender];
+     // message RefCounter = 1
+
+    NSObject * obj = [[[NSObject] alloc] init] autorelease];
+    //Ajout de obj au bassin - obj Refcounter = 1
+   }
+
+   // Dès le retour de la méthode l'évènement est traité est le bassin est vidangé 
+
+   [pool release];
+   //Envoie un message release à tous les éléments du bassin
+   // obj Refcounter = 0
+   //message RefCounter = 0
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Constructeurs de commodités</h1>
+
+<ul>
+<li>  Permet de construire un objet dont on a pas forcément besoin par la suite</li>
+<li>  Utilisation d&#39;une méthode de classe et non d&#39;instance</li>
+<li>  L&#39;objet créer est ajouté dans le <strong>bassin de libération</strong> avant d&#39;être retourné</li>
+</ul>
+</div>
+      <div class='step' >
+    
+<h1>Exemple</h1>
+<pre><code class='prettyprint '> + (id) tshirtWithRed
+ {
+    return [[[TShirt alloc] initWithColor:[UIColor redColor]] autorelease];
+ }
+</code></pre>
+<p>Attention dans le cas d&#39;une sous-classe</p>
+<pre><code class='prettyprint '>//Classe TShirtPersonnalisé : TShirt
+
++ (id) tshirtpersonnaliseWithRed
+ {
+    return [[[self alloc] initWithColor:[UIColor redColor]] autorelease];
+ }
+
+ //Appel à self permet de réutiliser les constructeurs des classes parentes
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Mutateurs</h1>
+
+<ul>
+<li>Respect de l&#39;encapsulation des données</li>
+<li>Selon le type de variable, les mutateurs n&#39;ont pas la même forme</li>
+</ul>
+
+<h2>* Important de comprendre ces formes.</h2>
+
+<h1>Types de mutateurs</h1>
+
+<ul>
+<li>  Assignation <strong>avec</strong> transfert de propriété (<strong>référence forte</strong>)</li>
+<li>  Assignation <strong>sans</strong> transfert de propriété (<strong>référence faible</strong>)</li>
+<li>  Assignation d&#39;une <strong>copie</strong> de l&#39;objet (<strong>référence forte sur nouvel objet</strong>)</li>
+</ul>
+</div>
+      <div class='step' >
+    
+<h1>Référence faible</h1>
+
+<p>Cas le plus trivial </p>
+<pre><code class='prettyprint '> //Comment faire ?
+
+ @interface VuePersonnalisee : UIView {
+
+    id<UItableViewDelegate> _delegate ;
+}
+@end
+
+// Comment écrire le mutateur de '_delegate' ?
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Référence faible</h1>
+
+<p>Cas le plus trivial </p>
+<pre><code class='prettyprint '> //Comment faire ?
+
+ @interface VuePersonnalisee : UIView {
+
+    id<UItableViewDelegate> _delegate ;
+}
+
+@end
+
+@implementation VuePersonnalisee
+
+- (void) setDelegate:(id<UItableViewDelegate>) delegate
+{
+    _delegate = delegate
+}
+
+@end
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Référence forte</h1>
+
+<p>But : garder l&#39;ancienne valeur + relâcher l&#39;ancienne valeur sans &quot;leaks&quot;</p>
+<pre><code class='prettyprint '> //Comment faire ?
+
+ @interface HTTPRequest : NSObject {
+
+    NSMutableString* _buff 
+}
+@end
+
+// Comment écrire le mutateur de 'buff' sans fuite mémoire ?
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Référence forte</h1>
+
+<p>But : garder l&#39;ancienne valeur + relâcher l&#39;ancienne valeur sans &quot;leaks&quot;</p>
+<pre><code class='prettyprint '> //Comment faire ?
+
+ @interface HTTPRequest : NSObject {
+
+    NSMutableString* _buff 
+}
+@end
+// Comment écrire le mutateur de 'buff' sans fuite mémoire ?
+
+ @implementation HTTPRequest
+
+
+ - (void) setBuff:(NSMutableString *) buff
+ {
+    [buff retain];// OBLIGATOIRE : si buff == _buff
+    [_buff release];
+    _buff = buff;
+
+ } 
+ @end            
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Référence sur copie</h1>
+
+<p>Même problématique que la référence forte simple</p>
+<pre><code class='prettyprint '> //Comment faire ?
+
+ @interface Personne : NSObject {
+
+    NSString * _nom 
+}
+@end
+// Comment écrire le mutateur de 'buff' sans fuite mémoire ?
+
+ @implementation Personne
+
+
+ - (void) setNom:(NSString *) nom
+ {
+    NSString * copy = [nom copy]; // OBLIGATOIRE : si nom == _nom car
+    [_nom release];               // si les objet sont immuables, ils utilisent
+    _nom = nom;                   // des copies superficielles
+
+ } 
+ @end            
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Cycles de retenues</h1>
+
+<p>Il faut normalement éviter que deux objets possèdent chacun une référence forte l&#39;un vers l&#39;autre.</p>
+<pre><code class='prettyprint '>//Exemple
+@interface A : NSObject {
+    B * _b;
+}
+@implementation A
+-(void) setB:(B*)b{
+    [b retain];
+    _b release];
+    _b = b;
+}
+@end
+@interface B : NSObject {
+    A * _a;
+}
+-(void) setA:(A*)a{
+    [a retain];
+    _a release];
+    _a = a;
+}
+
+A * a = [[A alloc] init]; // A RefCounter = 1
+B * b = [[B alloc] init]; // B RefCounter = 1
+
+[a setB:b];// B RefCounter = 2
+[b setA:a];// A RefCounter = 2
+
+[a release];// A RefCounter = 1  B RefCounter = 2
+[b release];// B RefCounter = 1  A RefCounter = 1
+//-> Leak potentiel
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Les propriétés</h1>
+
+<h2>Rappels</h2>
+
+<ul>
+<li>  Permet de créer <strong>dynamiquement l&#39;éxecution</strong> des <strong>mutateurs et accesseurs</strong> sur <strong>les variables d&#39;instances</strong></li>
+<li>  Originairement : 1 déclaration de <strong>@property</strong> = 1 déclaration de <strong>@synthetize</strong></li>
+<li>  Depuis XCode 4.4 le front-end <strong>LLVM</strong>, les déclaration de @synthetize sont automatiques</li>
+</ul>
+</div>
+      <div class='step' >
+    
+<h1>Exemple</h1>
+<pre><code class='prettyprint '>//Avant XCode 4.4
+ @interface Personne : NSObject {
+
+    NSString * _nom;
+    NSString * _prenom;
+    NSMutableArray * _emails;
+
+    Personne * _voisin;
+ }
+ @property (copy) NSString * nom;
+ @property (copy) NSString * prenom;
+ @property (retain) NSMutableArray *emails;
+ @property (assign) Personne *voisin;
+ @end
+
+ @implementation Personne
+
+ @synthetize nom = _nom;
+ @synthetize prenom = _prenom;
+ @synthetize emails = _emails;
+ @synthetize voisin = _voisin;
+
+ @end 
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Exemple</h1>
+<pre><code class='prettyprint '>//Après XCode 4.4
+ @interface Personne : NSObject
+
+ @property (copy) NSString * nom;
+ @property (copy) NSString * prenom;
+ @property (retain) NSMutableArray *emails;
+ @property (assign) Personne *voisin;
+ @end
+
+ @implementation Personne
+ //Clang crée automatiquement une variable préfixié par "_" (underscore)
+ // si aucun synthetize ne précise la méthode
+ // ATTENTION : seul le front-end LLVM le permet
+
+ @end 
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Types de propriétés</h1>
+
+<ul>
+<li>  <strong>retain</strong> : assignation <strong>avec</strong> transfert de propriété</li>
+<li>  <strong>assign</strong> : assignation <strong>sans</strong> transfert de propriété</li>
+<li>  <strong>copy</strong> : assignation d&#39;une copie de l&#39;objet</li>
+</ul>
+
+<p>Le runtime implémentent <strong>les mêmes mutateurs</strong> que ceux vus précédemment</p>
+</div>
+      <div class='step' >
+    
+<h1>Attention types immuables</h1>
+<pre><code class='prettyprint '>@interface Person
+
+@property (…) NSString* name;
+
+@end
+
+NSMutableString*someName =[NSMutableString stringWithString:@"Chris"];
+
+Person*p =[[[Person alloc] init] autorelease];
+
+p.name = someName;
+
+[someName setString:@"Debajit"];
+
+//Que vaut p.name si la property est retain ? copy ?
+//Qu'attendrait t'on ?
+</code></pre></div>
+      <div class='step' >
+    <pre><code class='prettyprint '>@interface Person
+
+@property (…) NSString* name;
+
+@end
+
+NSMutableString*someName =[NSMutableString stringWithString:@"Chris"];
+
+Person*p =[[[Person alloc] init] autorelease];
+
+p.name = someName;
+
+[someName setString:@"Debajit"];
+
+//Que vaut p.name si la property est retain ? copy ?
+//Qu'attendrait t'on ?
+
+// -> retain : p.name = @"Debajit"
+// -> copy : p.name = @"Chris"
+
+//NSString est immuable -> erreur de sémantique
+</code></pre>
+<p>Les types <strong>immuables</strong> doivent normalement utiliser des mutateurs avec référence sur copie.</p>
+</div>
+      <div class='step' >
+    
+<h1>Introduction à l&#39;ARC</h1>
+
+<ul>
+<li>  L&#39;ARC <strong>n&#39;est pas</strong> un ramasse-miette</li>
+<li>  Activer l&#39;ARC = demander au compilateur d&#39;écrire les messages <strong>retain</strong>, <strong>release</strong> et <strong>autorelease</strong> à votre place</li>
+<li>  Inconvénient : pas d&#39;action directe sur la gestion mémoire</li>
+</ul>
+</div>
+      <div class='step' >
+    
+<h1>ARC et LLVM</h1>
+
+<ul>
+<li>LLVM garde les concepts de <strong>propriétés sur les ojets</strong></li>
+<li>Interdiction d&#39;envoyer <strong>retain</strong>, <strong>release</strong> et <strong>autorelease</strong></li>
+<li>Le type de liaison entre objet (référence forte, faible, copie) se fait à <strong>la déclaration</strong> de la variable ou de la propriété.</li>
+</ul>
+</div>
+      <div class='step' >
+    
+<h1>Mots-clefs LLVM</h1>
+
+<ul>
+<li>  __strong</li>
+<li>  __weak</li>
+<li>  __autoreleasing</li>
+<li>  __unsafe_unretained</li>
+</ul>
+</div>
+      <div class='step' >
+    
+<h1>__strong</h1>
+
+<p>Référence forte avec transfert de propriété. C&#39;est la <strong>valeur par défaut si rien n&#39;est spécifié</strong>.</p>
+<pre><code class='prettyprint '>//Exemple
+NSMutableString * A; //Équivalent à __strong
+NSMutableString * __strong B;
+
+//ARC
+A = [[NSMutableString alloc] initWithString:@"Hello"];
+B = A ;
+
+//Équivalent
+A = [[NSMutableString alloc] initWithString:@"Hello"];
+B = [A retain];
+</code></pre></div>
+      <div class='step' >
+    
+<h1>__weak</h1>
+
+<p>Référence faible sans transfert de propriété et pointeur mis à <strong>nil</strong> quand il  n&#39;existe plus de référence forte sur l&#39;objet.</p>
+<pre><code class='prettyprint '>//Exemple
+NSMutableString * __strong A; 
+NSMutableString * __weak B;
+
+//ARC
+A = [[NSMutableString alloc] initWithString:@"Hello"];
+B = A ;
+
+//Équivalent
+A = [[NSMutableString alloc] initWithString:@"Hello"];
+B = A;
+
+/* Différentes opérations au cours desquelles A est désalloué */
+
+B = nil;// Mis à 0 quand plus aucune référence forte n'existe sur l'objet
+        // Ici, quand B est désalloué
+</code></pre></div>
+      <div class='step' >
+    
+<h1>__unsafe_unretained</h1>
+
+<p>Équivalent à <strong>__weak</strong> sauf que le pointeur n&#39;est pas mis à <strong>nil</strong> une fois l&#39;objet désalloué</p>
+<pre><code class='prettyprint '>//Exemple
+NSMutableString * __strong A; 
+NSMutableString * __unsafe_unretained B;
+
+//ARC
+A = [[NSMutableString alloc] initWithString:@"Hello"];
+B = A ;
+
+//Équivalent
+A = [[NSMutableString alloc] initWithString:@"Hello"];
+B = A;
+
+/* Différentes opérations au cours desquelles A est désalloué */
+
+B = ??? ;// B est un "dangling pointer" 
+</code></pre></div>
+      <div class='step' >
+    
+<h1>__autoreleasing</h1>
+
+<p>Indique un objet passer par <strong>référence (de type id * )</strong> et qui est envoyé dans le bassin de libération  en retour de fonction</p>
+<pre><code class='prettyprint '> // Exemple sur les NSError
+
+ -(BOOL)performOperationWithError:(NSError * __autoreleasing *)error;
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Attention à l&#39;ARC</h1>
+
+<p>L&#39;ARC respecte de manière bête et méchante les rêgles de gestion mémoire à la main : un appel à <strong>alloc</strong> provoque un appel à <strong>release</strong></p>
+<pre><code class='prettyprint '>- (void) foo
+{
+    NSArray * array = [[NSArray alloc] init];
+    /* …*/
+    // ARC ajoute un [array release]; à la fin
+}
+</code></pre></div>
+      <div class='step' >
+    
+<h1>@autorelease</h1>
+
+<p>Les bassins de libération automatiques se déclare avec @autorelease. L&#39;ancienne déclaration est correcte mais moins efficace</p>
+<pre><code class='prettyprint '> //Beaucoup mieux
+for(NSString * chemin in _chemins_a_copier)
+{
+    @autorelease
+    {
+        NSString * _nouveau_chemin = [_destination  stringByAppendingPathComponent:chemin];
+
+    /* Longue opération */     ]
+
+    }
+}
+</code></pre></div>
+      <div class='step' >
+    
+<h1>@autorelease</h1>
+
+<p>Les bassins de libération automatiques se déclare avec @autorelease. L&#39;ancienne déclaration est correcte mais moins efficace</p>
+<pre><code class='prettyprint '> //Beaucoup mieux
+for(NSString * chemin in _chemins_a_copier)
+{
+    @autorelease
+    {
+        NSString * _nouveau_chemin = [_destination  stringByAppendingPathComponent:chemin];
+
+    /* Longue opération */     ]
+
+    }
+}
+</code></pre></div>
+      <div class='step' >
+    
+<h1>ARC et @property</h1>
+
+<ul>
+<li><strong>assign</strong> -&gt; <strong>__unsafe_unretained</strong> .</li>
+<li><strong>copy</strong> -&gt; <strong>__strong</strong> ownership + mutateurs de copie</li>
+<li><strong>retain</strong> -&gt; <strong>__strong</strong> </li>
+<li><strong>strong</strong> -&gt; <strong>__strong</strong> </li>
+<li><strong>unsafe_unretained</strong> -&gt; <strong>__unsafe_unretained</strong></li>
+<li><strong>weak</strong> -&gt; <strong>__weak</strong></li>
+</ul>
+</div>
+      <div class='step' >
+    
+<h1>Cycles de retenues</h1>
+
+<p>Même remarque que précédemment</p>
+<pre><code class='prettyprint '>//Exemple
+@interface A : NSObject 
+
+    @property(strong) B* b;
+
+@end
+
+@interface B : NSObject
+
+    @property(strong) A* a;
+
+@end
+
+
+A* a = [[A alloc] init];
+B* b = [[B alloc] init];
+
+A.b = b;
+B.a = a;
+
+--> Leak potentiel
+</code></pre></div>
+      <div class='step' >
+    
+<h1>Aller plus loin</h1>
+
+<ul>
+<li><em>Transitioning to ARC Release Notes</em> - Apple documentation</li>
+<li><em>Advanced Memory Management Programming Guide</em> - Apple documentation</li>
+<li><em>Objective-C Automatic Reference Counting</em> <a href="http://clang.llvm.org/docs/AutomaticReferenceCounting.html">LLVM doc</a></li>
+</ul>
+</div>
+      <div class='step' >
+    
+      </div>
+    <script src="js/impress.js"></script>
+    <script>impress().init();</script>
+  </body>
+</html>
+    
