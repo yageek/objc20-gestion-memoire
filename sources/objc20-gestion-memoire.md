@@ -157,7 +157,7 @@ On se sert de la méthode alloc de NSObject
 Allouer la classe ne suffit pas, il nous faut l'initialiser.
 
 ```javascript
-//Considéré comme mauvaise pratique
+//Erreur : init peut renvoyer un élément différent de alloc
 Foo* foo = [Foo alloc];
 [foo initOfFoo];
 

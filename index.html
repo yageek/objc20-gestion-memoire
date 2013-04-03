@@ -188,7 +188,7 @@ NSString* foo2 = [foo retain];
 <h2>Initialisation</h2>
 
 <p>Allouer la classe ne suffit pas, il nous faut l&#39;initialiser.</p>
-<pre><code class='prettyprint javascript'>//Considéré comme mauvaise pratique
+<pre><code class='prettyprint javascript'>//Erreur : init peut renvoyer un élément différent de alloc
 Foo* foo = [Foo alloc];
 [foo initOfFoo];
 
