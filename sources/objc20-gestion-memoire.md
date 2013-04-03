@@ -83,38 +83,64 @@ permet d'allouer la mémoire pour tout les objets.
 
 ---
 
-# Propriétaires
+# Convention
 
-L'implémentation des compteurs de référence permet de réfléchir en terme de **propriété sur un objet** plutôt qu'en terme d'allocation/désallocation mémoire à la manière **malloc/free**
-
-## Convention
-
-*   Toute fonction **contenant alloc, copy ou commencant par new** renvoie une objet dont le compteur de référence vaut **1**
+*   Toute fonction contenant **alloc, copy** ou commencant par **new** renvoie une objet dont le compteur de référence vaut **1**
+*   Dans les autres cas, nous ne sommes pas responsable du cycle de vie de l'objet, c'est un autre objet quelque part qui gère le cycle de vie.
+*   Dans ces cas, on doit faire appel à **release** ou **retain** si l'on souhaite intervenir sur ce cycle de vie.
 *   Un appel à **retain** incrémente le compteur de 1
 *   Un appel à **release** décrémente le compteur de 1
+*   Un **alloc, copy, new, retain** implique un **retain** ou **autorelease**
 
+---
+#Exemple
 
+      NSString * string = [NSString stringWithFormat:@"Hello %p",self];
+      //On ne possède pas l'objet -> pas à gérer la désallocation
+      // c'est à dire qu'un objet fera un release plus tard
+      
+      [string retain]; 
+      //Intervention sur le cycle de vie -> à nous de faire un release plus tard
+      // RefCounter = 2
+
+      [string release];
+      //Refcounter = 1
+      //Il faut ajouter le release de l'objet qui le gère initialement
+      // Alors Refcounter vaudra 0
+
+      /* ...*/
+
+      //NSURLConnectionDelegate
+      - (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error 
+      {
+        //On ne possède ni error, ni connection -> un autre objet gère leur cycle de vie 
+        [error retain]; //Intervention sur le cycle de vie
+
+      }
 ---
 
 # Propriétaires d'un objet
 
-Le ou les propriétaires d'un objet sont les derniers objet ayant appellé **alloc**, **copy**, **new**, **retain** ou équivalens et n'ayant pas appellé **release** par la suite. Comme aucune allocation d'objet sur la pile n'est tolérée, lorsque l'on parle de **propriétaires**, on dit que le **pointeur possède l'objet qu'il pointe en mémoire.**
- 
-        NSString * foo =[[NSString] alloc] init];
-        
-        // foo -> (NSString @ 0xFEBCD) 
-        // Le pointeur 'foo' possède l'objet à l'adresse 0xFEBCD - RefCount = 1
-        
-        NSString *foo2 = [foo retain];
-        //foo et foo2 -> (NSString @ 0xFEBCD)
-        // Les deux pointeurs possède l'objet à l'adresse 0xFEBCD - RefCount = 2
+Le ou les propriétaires d'un objet sont les derniers objet ayant appellé **alloc**, **copy**, **new**, **retain** ou équivalents et n'ayant pas appellé **release** par la suite. Comme aucune allocation d'objet sur la pile n'est tolérée, lorsque l'on parle de **propriétaires**, on dit que le **pointeur possède l'objet qu'il pointe en mémoire.**
 
-    	[foo release];
-        // foo ne possède plus l'objet à l'adresse 0xFEBCD -  RefCount = 1
-        // foo2 le possède encore
-        
-        [foo2 release]
-        //Plus personne ne possèdent l'objet - RefCount = 0  -> désallocation
+---
+# Exemple
+```javascript
+NSString* foo = [[NSString alloc] init];
+// foo -> (NSString @ 0xFEBCD) 
+// Le pointeur 'foo' possède l'objet à l'adresse 0xFEBCD - RefCount = 1
+
+NSString* foo2 = [foo retain];
+//foo et foo2 -> (NSString @ 0xFEBCD)
+// Les deux pointeurs possède l'objet à l'adresse 0xFEBCD - RefCount = 2
+
+[foo release];
+// foo ne possède plus l'objet à l'adresse 0xFEBCD -  RefCount = 1
+// foo2 le possède encore
+
+[foo2 release];
+//Plus personne ne possèdent l'objet - RefCount = 0  -> désallocation
+```
 
 ---
 
@@ -130,16 +156,18 @@ On se sert de la méthode alloc de NSObject
 
 Allouer la classe ne suffit pas, il nous faut l'initialiser.
 
-     //Considéré comme mauvaise pratique
-     Foo* foo = [Foo alloc];
-     [foo initOfFoo];
+```javascript
+//Considéré comme mauvaise pratique
+Foo* foo = [Foo alloc];
+[foo initOfFoo];
 
-     //Considéré comme mauvaise pratique 
-     Foo* foo = [Foo new]; //Équivalent à alloc init
+//Considéré comme mauvaise pratique 
+Foo* foo = [Foo new]; //Équivalent à alloc init
 
-     //Bonne pratique
-     Foo *foo = [[Foo alloc] initOfFoo];
-     
+//Bonne pratique
+Foo *foo = [[Foo alloc] initOfFoo];
+```
+
 ---
 
 
@@ -266,7 +294,7 @@ Lors de l'échec dans l'initialiseur :
 # Remarque
 
 *   Cela ne sert à rien, sauf justification particulière, de mettre des variables à nil dans **dealloc** 
-*   On peut se dire que si l'appel à \[super dealloc\] désalloue la classe, ce n'est pas nécessaire d'appeler release
+*   On peut se dire que si l'appel à **\[super dealloc\]** désalloue la classe, ce n'est pas nécessaire d'appeler **release**
 
     
 ---
@@ -332,7 +360,7 @@ Lors de l'échec dans l'initialiseur :
      										  
 * Copie d'un objet dont la représentation en mémoire ne change pas (immuable) = copie superficielle.
 * Copie d'un objet mutable = copie profonde
-
+* Copie mutable d'un objet immuable : utilisation de **mutableCopyWithZone:**
 
 
 ---
@@ -352,6 +380,13 @@ La méthode **copy** de NSString incrémente le compteur de référence de l'obj
     NSString* copyOfString1 = [string1 copy];
     
 	BOOL equal = (string1 == copyOfString1) ; // -> equal = YES
+
+Copie mutable à partir d'un objet immuable :
+
+    NSString * str1  =@"Hello";
+    NSMutableString * str2 = [str1 mutableCopy];
+    [str2 appendString:@" mutable"];
+
 ---
 
 # En pratique
@@ -384,14 +419,95 @@ La méthode **copy** de NSString incrémente le compteur de référence de l'obj
      	/* Autre opérations éventuelles */
     	return copie;
      } 
+
+---
+
+# Collections d'objet
+
+*   Les collections d'objets ne constitue pas des bloc mémoires contigues comme en C
+*   Les collections ne font que **garder des listes des pointeurs** et agissent sur les compteurs de références des objets qu'elles contiennent
+*   **Ajouter** un objet dans une collection **incrémente** le compteur de référence de l'objet
+*   **Retirer** un objet d'une collection **décrémente** le compteur de référence de l'objet
+
+---
+
+# Exemple
+
+    NSString * a = [[NSString alloc] init];
+    //RefCounter a = 1
+
+    NSString * b = [[NSString alloc] init];
+    //RefCounter b = 1
+
+    NSArray * array = [[NSArray alloc] intiWithObjects:a,b,nil];
+    //RefCounter array = 1
+    //RefCounter a = 2 - RefCounter b = 2
+
+    [a release]; //RefCounter a = 1
+    [b release]; //RefCounter b = 1
+
+    NSString * c = [[NSString alloc] init];
+    //RefCounter c = 1
+
+    NSDictionary * dict = [NSDictionary alloc] initWithObject:array forKey:c];
+    //RefCounter a = 2 - RefCounter b = 2 
+    //RefCounter c = 2
+    //RefCounter array = 2
+    //RefCounter dict = 1
+
+    [array release];
+    //RefCounter a = 1 - RefCounter b = 1 
+    //RefCounter c = 2
+    //RefCounter array = 1
+    //RefCounter dict = 1
+
+    [dict release];
+    //RefCounter a = 0 - RefCounter b = 0 
+    //RefCounter c = 1
+    //RefCounter array = 0
+    //RefCounter dict = 0
+
+    [c release];
+
+
+
 ---
 
 # Autorelease pools
 
-* Les pools ou bassins de libérations automatiques permettent de gérer les cas de **transmissions de propriété**, à la création de **constructeurs de commodités** ou de libérer de la mémoire occupée inutilement.
+* Les pools ou bassins de libérations automatiques permettent de gérer les cas de **transmissions de propriété**, à la création de **constructeurs de commodités** ou de **libérer de la mémoire occupée inutilement**.
 * Dans les applications graphiques (iOS ou Cocoa), un pool de libération est crée automatiquement dans la boucle d'évènement à chaque évènement (NSRunLoop)
 * Dans les applications non graphiques, le pool doit être explicitement crée.
 
+
+---
+
+# Autorelease
+
+*   Il faut le voir comme un message **release différé dans le temps**
+*   On ajoute un objet dans le pool courant en lui envoyant le message **autorelease**
+*   À chaque appel de la méthode **release** du pool, un message **release** est envoyé à chacun des objets présents dans le pool.
+*   Si on appellé N fois la méthode **autorelease** sur un objet, il faudra appeler N fois la méthode **release** du pool.
+
+---
+# Exemple
+
+    NSAutoreleasePool * pool = [NSAutoreleasePool alloc] init];
+
+    NSString * string1 = [[[NSString alloc] initWithFormat:@"Self :%p",self] autorelease]; 
+    //RefCounter string1 = 1 + ajout dans 'pool'
+
+    NSString *string2  = [NSString stringWithFormat:@"String1 : %@",string1]; 
+    //Constructeur de commodité -> string2 est envoyé dans le pool courant
+    // Le pool courant à ce niveau est 'pool"
+    //RefCounter string2 = 1;
+
+    NSAutoreleasePool * pool_2 = [NSAutoreleasePool alloc] init];
+
+    NSSArray * array = [[[NSArray alloc] initWithObjects:string1,string2,nil] autorelease];
+
+
+    [pool release];
 
 ---
 
@@ -424,14 +540,6 @@ La méthode **copy** de NSString incrémente le compteur de référence de l'obj
 	}
 ---
 
-# Autorelease
-
-*	On ajoute un objet dans le pool courant en lui envoyant le message **autorelease**
-*	À chaque appel de la méthode **release** du pool, un message **release** est envoyé à chacun des objets présents dans le pool
-*	Si on appellé N fois la méthode **autorelease** sur un objet, il faudra appeler N fois la méthode **release** du pool
-
----
-
 # Boucle d'évènements
 
 ![Creative Commons License](images/run_loop.jpg)
@@ -442,54 +550,57 @@ La méthode **copy** de NSString incrémente le compteur de référence de l'obj
 # Boucle d'évènements
 
 *The Application Kit creates an autorelease pool on the main thread at the beginning of every cycle of the event loop, and drains it at the end, thereby releasing any autoreleased objects generated while processing an event.*
- 
-      //En pseudo code
-      intUIApplicationMain(...)
-      {
-        while(!shouldQuitApplication)
-        {
-      
-        UIEvent*someEvent =// Attente d'un évènement;
-      
-        NSAutoreleasePool*myPool =[[NSAutoreleasePool alloc] init];
-      
-        /* Traitement d'un évement :
-        	- Action sur un bouton
-        	- Connexion entrante
-        	- Notification
-           ....
-        */
-        [myPool release];
-        }
-      }
 
+```javascript
+//En pseudo code
+intUIApplicationMain(...)
+{
+while(!shouldQuitApplication)
+{
+
+/*Attente d'un évenèment*/
+UIEvent * event = [self treatEvent];
+
+NSAutoreleasePool*myPool =[[NSAutoreleasePool alloc] init];
+
+/* Traitement d'un évement :
+	- Action sur un bouton
+	- Connexion entrante
+	- Notification
+   ....
+*/
+[myPool release];
+}
+}
+```
 Chaque thread possède sa propre boucle d'évènements.
 
 ---
 
 # Exemple
-		
-		//Un bassin a été crée avant d'appeler la méthode 
-		NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
-		
-       - (IBAction) buttonClicked:(id)sender
-       { 
-     	
-         NSString * message = [NSString stringWithFormat:@"Sender : %p",sender];
-         // message RefCounter = 1
-		
-		NSObject * obj = [[[NSObject] alloc] init] autorelease];
-		//Ajout de obj au bassin - obj Refcounter = 1
-       }
-       
-       // Dès le retour de la méthode l'évènement est traité est le "bassin est vidangé"
 
-       [pool release];
-       //Envoie un message release à tous les éléments du bassin
-       // obj Refcounter = 0
-       //message RefCounter = 0
- 
- 
+```	objc
+//Un bassin a été crée avant d'appeler la méthode 
+NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
+
+- (IBAction) buttonClicked:(id)sender
+{ 
+	
+NSString * message = [NSString stringWithFormat:@"Sender : %p",sender];
+// message RefCounter = 1
+
+NSObject * obj = [[[NSObject] alloc] init] autorelease];
+//Ajout de obj au bassin - obj Refcounter = 1
+}
+
+// Dès le retour de la méthode l'évènement est traité est le "bassin est vidangé"
+
+[pool release];
+//Envoie un message release à tous les éléments du bassin
+// obj Refcounter = 0
+//message RefCounter = 0
+```
+
 ---
 
 # Constructeurs de commodités
@@ -521,9 +632,10 @@ Attention dans le cas d'une sous-classe
 
 # Mutateurs
 
-* Respect de l'encapsulation des données
-* Selon le type de variable, les mutateurs n'ont pas la même forme
-* Important de comprendre ces formes.
+*   Respect de l'encapsulation des données
+*   Selon le type de variable, les mutateurs n'ont pas la même forme
+*   Important de comprendre ces formes.
+
 ---
 
 # Types de mutateurs
@@ -720,21 +832,25 @@ Il faut normalement éviter que deux objets possèdent chacun une référence fo
 ---
 
 # Exemple
-	//Après XCode 4.4
-     @interface Personne : NSObject
-     
-     @property (copy) NSString * nom;
-     @property (copy) NSString * prenom;
-     @property (retain) NSMutableArray *emails;
-     @property (assign) Personne *voisin;
-     @end
-     
-     @implementation Personne
-	 //Clang crée automatiquement une variable préfixié par "_" (underscore)
-	 // si aucun synthetize ne précise la méthode
-	 // ATTENTION : le front-end GCC ne le permet pas
-     
-     @end 
+```objc
+//Après XCode 4.4
+@interface Personne : NSObject {}
+    
+
+@property (copy) NSString * nom;
+@property (copy) NSString * prenom;
+@property (retain) NSMutableArray *emails;
+@property (assign) Personne *voisin;
+
+@end
+
+@implementation Personne
+//Clang crée automatiquement une variable préfixié par "_" (underscore)
+//si aucun synthetize ne précise la méthode
+//ATTENTION : le front-end GCC ne le permet pas
+
+@end
+```
 ---
 
 # Types de propriétés
@@ -749,28 +865,31 @@ Le runtime implémentent **les mêmes mutateurs** que ceux vus précédemment
 
 # Attention types immuables
   
-    @interface Person
-    
-    @property (…) NSString* name;
-    
+    @interface Person : NSObject {
+        NSString * _name;
+    }
+
+        @property NSString* name;
+
     @end
-    
+    /* ... */
+
     NSMutableString*someName =[NSMutableString stringWithString:@"Chris"];
-   
+
     Person*p =[[[Person alloc] init] autorelease];
-   
+
     p.name = someName;
-    
+
     [someName setString:@"Debajit"];
-    
-    //Qu'attendrait t'on dans ce contexte ?
+
+Qu'attendrait t'on dans ce contexte ?
     
 ---
-
-    @interface Person
-    
-    @property (…) NSString* name;
-    
+```objc
+     @interface Person : NSObject {
+        NSString * _name;
+    }
+        @property NSString* name;
     @end
     
     NSMutableString*someName =[NSMutableString stringWithString:@"Chris"];
@@ -787,8 +906,8 @@ Le runtime implémentent **les mêmes mutateurs** que ceux vus précédemment
     // -> copy : p.name = @"Chris"
     
     //NSString est immuable -> erreur de sémantique
-    
-    
+```    
+
     
 Les types **immuables** doivent normalement utiliser des mutateurs avec référence sur copie.
     
@@ -823,10 +942,10 @@ Les types **immuables** doivent normalement utiliser des mutateurs avec référe
 
 # \_\_strong
 
-Référence forte avec transfert de propriété. C'est la **valeur par défaut si rien n'est spécifié**.
+Référence forte avec transfert de propriété. C'est la **valeur par défaut** si rien n'est spécifié.
 
     //Exemple
-    NSMutableString * A; //Équivalent à __strong
+    NSMutableString * A; 
     NSMutableString * __strong B;
     
     //ARC
@@ -837,8 +956,12 @@ Référence forte avec transfert de propriété. C'est la **valeur par défaut s
     A = [[NSMutableString alloc] initWithString:@"Hello"];
     B = [A retain];
     [A release];
-   
+
+    /* Différentes opérations au cours desquelles A est désalloué */
     
+    B = nil;// Mis à 0 quand plus aucune référence forte n'existe sur l'objet
+            // Ici, quand B est désalloué
+
 ---
 
 # \_\_weak
@@ -870,7 +993,7 @@ Référence faible sans transfert de propriété et pointeur mis à **nil** quan
 
     //Exemple
     NSMutableString * __strong A; 
-    NSMutableString * __unsafe_unretained B;
+    NSMutableString * __weak B;
     
     //ARC
     A = [[NSMutableString alloc] initWithString:@"Hello"];
@@ -882,7 +1005,8 @@ Référence faible sans transfert de propriété et pointeur mis à **nil** quan
     
     /* Différentes opérations au cours desquelles A est désalloué */
     
-    B = ??? ;// B est un "dangling pointer" 
+    BOOL ok = (B == nil); // B est un "dangling pointer"
+    
             
 ---
 
@@ -900,14 +1024,13 @@ Indique un objet passer par **référence (de type id \* )** et qui est envoyé 
 
 L'ARC respecte de manière bête et méchante les rêgles de gestion mémoire à la main : un appel à **alloc** provoque un appel à **release**
 
-
-    - (void) foo
-    {
-    	NSArray * array = [[NSArray alloc] init];
-    	/* …*/
-    	// ARC ajoute un [array release]; à la fin
-    }
-    
+```javascript
+-(void) foo 
+{
+    NSArray * array  = [[NSArray alloc] init];
+    //ARC rajoute un release ici
+}
+```
 ---
 
 # @autorelease
@@ -919,7 +1042,7 @@ Les bassins de libération automatiques se déclarent avec @autorelease. L'ancie
     {
     	@autorelease
     	{
-			NSString * _nouveau_chemin = [_destination 	stringByAppendingPathComponent:chemin];
+			NSString * _nouveau = [_destination stringByAppendingPathComponent:chemin];
 	
 		/* Longue opération */	
 	
@@ -942,8 +1065,9 @@ Les bassins de libération automatiques se déclarent avec @autorelease. L'ancie
 
 Même remarque que précédemment
 
+```javascript
 	//Exemple
-	@interface A : NSObject 
+	@interface A : NSObject
 	
 		@property(strong) B* b;
 
@@ -963,7 +1087,7 @@ Même remarque que précédemment
 	B.a = a;
 	
 	--> Leak potentiel
-	
+```
 	
 ---
 
@@ -977,6 +1101,4 @@ Même remarque que précédemment
 
 
 [2]:http://clang.llvm.org/docs/AutomaticReferenceCounting.html 
-
----
 
