@@ -44,9 +44,9 @@
 
 <ul>
 <li>  Objective-C : Langage C + paradigme objet</li>
-<li>  L&#39;allocation/désallocation sur le tas passe par les appels systèmes connues de la libC</li>
-<li>  Allocation des objets sur la pile quasi-interdite (sauf les <em>fermetures</em>)</li>
-<li>  Langage dynamique à cause du <strong>moteur d&#39;exécution</strong> (différent de C, C++, ASM, LISP,...)</li>
+<li>  L&#39;allocation/désallocation sur le tas passe par les appels systèmes connus de la librarie C</li>
+<li>  Allocation des objets sur la pile quasi-interdite (sauf les <strong>fermetures</strong>)</li>
+<li>  Langage dynamique grâce au <strong>moteur d&#39;exécution</strong> (différent de C, C++, ASM, LISP,...)</li>
 </ul>
 </div>
       <div class='step' >
@@ -54,12 +54,12 @@
 <h1>Allocation</h1>
 
 <ul>
-<li>  Compteur de référence: désallocation de l&#39;objet lorsque le compteur est nul</li>
+<li>  Compteur de référence : désallocation de l&#39;objet lorsque le compteur est nul</li>
 <li>  Classe &#39;racine&#39; : NSObject</li>
 <li>  Chaque objet hérite de NSObject directement ou indirectement : <strong>c&#39;est lui qui gère l&#39;allocation/désallocation pour tout ses enfants</strong></li>
 </ul>
 </div>
-      <div class='step'  data-x="1000" data-scale="2">
+      <div class='step' >
     
 <h1>MAObject</h1>
 <pre><code class='prettyprint '>@implementation MAObject {
@@ -113,7 +113,7 @@
     
 <h1>Propriétaires</h1>
 
-<p>L&#39;implémentation des compteurs de référence permet de réfléchir en terme de <strong>propriété sur un objet</strong> plutôt qu&#39;en terme d&#39;allocation/désallocation mémoire à la <strong>malloc/free</strong></p>
+<p>L&#39;implémentation des compteurs de référence permet de réfléchir en terme de <strong>propriété sur un objet</strong> plutôt qu&#39;en terme d&#39;allocation/désallocation mémoire à la manière <strong>malloc/free</strong></p>
 
 <h2>Convention</h2>
 
@@ -127,8 +127,8 @@
     
 <h1>Propriétaires d&#39;un objet</h1>
 
-<p>Le ou les propriétaires d&#39;un objet sont les derniers objet ayant appellé <strong>alloc</strong>, <strong>copy</strong>, <strong>new</strong>, <strong>retain</strong> ou équivalents et n&#39;ayant pas appellé <strong>release</strong> par la suite. Comme aucune allocation d&#39;objet sur la pile n&#39;est toléré, lorsque l&#39;on parle de <strong>propriétaires</strong>, on dit que le <strong>pointeur possède l&#39;objet qu&#39;il pointe en mémoire.</strong></p>
-<pre><code class='prettyprint '>    NSString * foo = [[NSString] alloc] init];
+<p>Le ou les propriétaires d&#39;un objet sont les derniers objet ayant appellé <strong>alloc</strong>, <strong>copy</strong>, <strong>new</strong>, <strong>retain</strong> ou équivalens et n&#39;ayant pas appellé <strong>release</strong> par la suite. Comme aucune allocation d&#39;objet sur la pile n&#39;est tolérée, lorsque l&#39;on parle de <strong>propriétaires</strong>, on dit que le <strong>pointeur possède l&#39;objet qu&#39;il pointe en mémoire.</strong></p>
+<pre><code class='prettyprint '>    NSString * foo =[[NSString] alloc] init];
 
     // foo -> (NSString @ 0xFEBCD) 
     // Le pointeur 'foo' possède l'objet à l'adresse 0xFEBCD - RefCount = 1
@@ -156,10 +156,14 @@
 <h2>Initialisation</h2>
 
 <p>Allouer la classe ne suffit pas, il nous faut l&#39;initialiser.</p>
-<pre><code class='prettyprint '> //Mauvaise pratiques
+<pre><code class='prettyprint '> //Considéré comme mauvaise pratique
  Foo* foo = [Foo alloc];
  [foo initOfFoo];
- //Bonne pratiques
+
+ //Considéré comme mauvaise pratique 
+ Foo* foo = [Foo new]; //Équivalent à alloc init
+
+ //Bonne pratique
  Foo *foo = [[Foo alloc] initOfFoo];
 </code></pre></div>
       <div class='step' >
@@ -218,10 +222,10 @@
     
 <h1>Échec dans l&#39;initialisation</h1>
 
-<p>Lors de l&#39;échec dans l&#39;initialiseurs :</p>
+<p>Lors de l&#39;échec dans l&#39;initialiseur :</p>
 
 <ol>
-<li> Libérér les ressources non désallouées dans <strong>dealloc</strong> (objet, connexion ultérieurement libéré dans <strong>init</strong>)</li>
+<li> Libérer les ressources non désallouées dans <strong>dealloc</strong> (objet, connexion ultérieurement libérée dans <strong>init</strong>,...)</li>
 <li> Libérer <strong>self</strong> qui possède un compteur de 1 à cause de l&#39;appel à <strong>alloc</strong></li>
 <li> Retournez <strong>nil</strong></li>
 </ol>
@@ -264,7 +268,7 @@
 <h1>Destruction d&#39;une classe</h1>
 
 <ul>
-<li>  Toujours appeller <strong>[super dealloc]</strong> en dernier dans la méthode <strong>dealloc</strong> de la classe</li>
+<li>  Toujours appeler <strong>[super dealloc]</strong> en dernier dans la méthode <strong>dealloc</strong> de la classe</li>
 </ul>
 
 <h2>Bon exemple:</h2>
@@ -286,8 +290,8 @@
 <h1>Remarque</h1>
 
 <ul>
-<li>  Cela ne sert à rien de mettre des variables à nil dans <strong>dealloc</strong>. Si vous devez le faire, c&#39;est un problème de conception.</li>
-<li>  On peut se dire que si l&#39;appel à [super dealloc] désalloue la classe, ce n&#39;est pas nécessaire d&#39;appeller release</li>
+<li>  Cela ne sert à rien, sauf justification particulière, de mettre des variables à nil dans <strong>dealloc</strong> </li>
+<li>  On peut se dire que si l&#39;appel à [super dealloc] désalloue la classe, ce n&#39;est pas nécessaire d&#39;appeler release</li>
 </ul>
 </div>
       <div class='step' >
@@ -332,9 +336,9 @@ C->a = [a retain];   //a RefCounter = 3
 <h1>Copie d&#39;objet</h1>
 
 <ul>
-<li>  Implémentation du protocol <strong>NSCopying</strong> et de la méthode <strong>copyWithZone:</strong> qui est appellé par <strong>copy</strong></li>
-<li>  L&#39;argument <strong>NSZone</strong> est un héritage et n&#39;est plus utilisé</li>
-<li>  Implémentation dépend de la sémantique voulue</li>
+<li>  Implémentation du protocol <strong>NSCopying</strong> et de la méthode <strong>copyWithZone:</strong> appellée par <strong>copy</strong></li>
+<li>  L&#39;argument <strong>NSZone</strong> est un héritage et n&#39;est plus utilisé.</li>
+<li>  Implémentation dépend de la sémantique voulue.</li>
 </ul>
 </div>
       <div class='step' >
@@ -353,7 +357,7 @@ C->a = [a retain];   //a RefCounter = 3
 <h1>Copie d&#39;un objet</h1>
 
 <ul>
-<li>Copie d&#39;un objet dont la représentation en mémoire ne change pas (immuable) = copie superficielle. Faire la copie d&#39;un objet immuable.</li>
+<li>Copie d&#39;un objet dont la représentation en mémoire ne change pas (immuable) = copie superficielle.</li>
 <li>Copie d&#39;un objet mutable = copie profonde</li>
 </ul>
 </div>
@@ -361,7 +365,7 @@ C->a = [a retain];   //a RefCounter = 3
     
 <h1>Exemple avec NSString</h1>
 
-<p>Pointeur immuable ne veut pas dire pointeur immuable :</p>
+<p>Objet immuable ne veut pas dire pointeur immuable :</p>
 <pre><code class='prettyprint '> NSString * string1 = @"String 1"; 
  string1 = @"Autre chose que String1"; //Le pointeur peut changer
                                        // @"String 1" ne change pas en mémoire
@@ -409,8 +413,8 @@ BOOL equal = (string1 == copyOfString1) ; // -> equal = YES
 <h1>Autorelease pools</h1>
 
 <ul>
-<li>Les pools ou bassins de libérations automatiques permettent de gérer les cas de <strong>transmissions de propriété</strong>,à la création de <strong>constructeurs de commodités</strong> ou de libérer de la mémoire occupée inutilement.</li>
-<li>Dans les applications graphiques (iOS ou Cocoa), un pool de libération est crée automatiquement dans la boucle d&#39;évènement (NSRunLoop)</li>
+<li>Les pools ou bassins de libérations automatiques permettent de gérer les cas de <strong>transmissions de propriété</strong>, à la création de <strong>constructeurs de commodités</strong> ou de libérer de la mémoire occupée inutilement.</li>
+<li>Dans les applications graphiques (iOS ou Cocoa), un pool de libération est crée automatiquement dans la boucle d&#39;évènement à chaque évènement (NSRunLoop)</li>
 <li>Dans les applications non graphiques, le pool doit être explicitement crée.</li>
 </ul>
 </div>
@@ -449,8 +453,8 @@ NSString * _nouveau_chemin = [_destination stringByAppendingPathComponent:chemin
 
 <ul>
 <li>  On ajoute un objet dans le pool courant en lui envoyant le message <strong>autorelease</strong></li>
-<li>  À chaque appelle de la méthode <strong>release</strong> du pool, un message <strong>release</strong> est envoyé à chacun des objets présents dans le pool</li>
-<li>  Si on appellé N fois la méthode <strong>autorelease</strong> sur un objet, il faudra appellé N fois la méthode <strong>release</strong> du pool</li>
+<li>  À chaque appel de la méthode <strong>release</strong> du pool, un message <strong>release</strong> est envoyé à chacun des objets présents dans le pool</li>
+<li>  Si on appellé N fois la méthode <strong>autorelease</strong> sur un objet, il faudra appeler N fois la méthode <strong>release</strong> du pool</li>
 </ul>
 </div>
       <div class='step' >
@@ -489,7 +493,7 @@ NSString * _nouveau_chemin = [_destination stringByAppendingPathComponent:chemin
       <div class='step' >
     
 <h1>Exemple</h1>
-<pre><code class='prettyprint '>    //Un bassin a été crée avant d'appeller la méthode 
+<pre><code class='prettyprint '>    //Un bassin a été crée avant d'appeler la méthode 
     NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
 
    - (IBAction) buttonClicked:(id)sender
@@ -502,7 +506,7 @@ NSString * _nouveau_chemin = [_destination stringByAppendingPathComponent:chemin
     //Ajout de obj au bassin - obj Refcounter = 1
    }
 
-   // Dès le retour de la méthode l'évènement est traité est le bassin est vidangé 
+   // Dès le retour de la méthode l'évènement est traité est le "bassin est vidangé"
 
    [pool release];
    //Envoie un message release à tous les éléments du bassin
@@ -515,8 +519,8 @@ NSString * _nouveau_chemin = [_destination stringByAppendingPathComponent:chemin
 
 <ul>
 <li>  Permet de construire un objet dont on a pas forcément besoin par la suite</li>
-<li>  Utilisation d&#39;une méthode de classe et non d&#39;instance</li>
-<li>  L&#39;objet créer est ajouté dans le <strong>bassin de libération</strong> avant d&#39;être retourné</li>
+<li>  Utilisation d&#39;une <strong>méthode de classe et non d&#39;instance</strong></li>
+<li>  L&#39;objet crée est ajouté dans le <strong>bassin de libération</strong> avant d&#39;être retourné</li>
 </ul>
 </div>
       <div class='step' >
@@ -598,7 +602,7 @@ NSString * _nouveau_chemin = [_destination stringByAppendingPathComponent:chemin
     
 <h1>Référence forte</h1>
 
-<p>But : garder l&#39;ancienne valeur + relâcher l&#39;ancienne valeur sans &quot;leaks&quot;</p>
+<p>But : garder l&#39;ancienne valeur + relâcher l&#39;ancienne valeur sans &quot;leak&quot;</p>
 <pre><code class='prettyprint '> //Comment faire ?
 
  @interface HTTPRequest : NSObject {
@@ -656,7 +660,7 @@ NSString * _nouveau_chemin = [_destination stringByAppendingPathComponent:chemin
  {
     NSString * copy = [nom copy]; // OBLIGATOIRE : si nom == _nom car
     [_nom release];               // si les objet sont immuables, ils utilisent
-    _nom = nom;                   // des copies superficielles
+    _nom = nom;                   // généralement des copies superficielles
 
  } 
  @end            
@@ -750,7 +754,7 @@ B * b = [[B alloc] init]; // B RefCounter = 1
  @implementation Personne
  //Clang crée automatiquement une variable préfixié par "_" (underscore)
  // si aucun synthetize ne précise la méthode
- // ATTENTION : seul le front-end LLVM le permet
+ // ATTENTION : le front-end GCC ne le permet pas
 
  @end 
 </code></pre></div>
@@ -783,8 +787,7 @@ p.name = someName;
 
 [someName setString:@"Debajit"];
 
-//Que vaut p.name si la property est retain ? copy ?
-//Qu'attendrait t'on ?
+//Qu'attendrait t'on dans ce contexte ?
 </code></pre></div>
       <div class='step' >
     <pre><code class='prettyprint '>@interface Person
@@ -802,7 +805,6 @@ p.name = someName;
 [someName setString:@"Debajit"];
 
 //Que vaut p.name si la property est retain ? copy ?
-//Qu'attendrait t'on ?
 
 // -> retain : p.name = @"Debajit"
 // -> copy : p.name = @"Chris"
@@ -816,9 +818,10 @@ p.name = someName;
 <h1>Introduction à l&#39;ARC</h1>
 
 <ul>
-<li>  L&#39;ARC <strong>n&#39;est pas</strong> un ramasse-miette</li>
+<li>  L&#39;ARC <strong>n&#39;est pas</strong> un ramasse-miette.</li>
+<li>  Remplace le garbage collector instauré sur Mac OS X 10.5 à partir de 10.7</li>
 <li>  Activer l&#39;ARC = demander au compilateur d&#39;écrire les messages <strong>retain</strong>, <strong>release</strong> et <strong>autorelease</strong> à votre place</li>
-<li>  Inconvénient : pas d&#39;action directe sur la gestion mémoire</li>
+<li>  Inconvénients : pas d&#39;action directe sur la gestion mémoire, non disponible sur les versions Mac &lt; 10.7</li>
 </ul>
 </div>
       <div class='step' >
@@ -826,7 +829,7 @@ p.name = someName;
 <h1>ARC et LLVM</h1>
 
 <ul>
-<li>LLVM garde les concepts de <strong>propriétés sur les ojets</strong></li>
+<li>LLVM garde les concepts de <strong>propriétés sur les objets</strong></li>
 <li>Interdiction d&#39;envoyer <strong>retain</strong>, <strong>release</strong> et <strong>autorelease</strong></li>
 <li>Le type de liaison entre objet (référence forte, faible, copie) se fait à <strong>la déclaration</strong> de la variable ou de la propriété.</li>
 </ul>
@@ -858,6 +861,7 @@ B = A ;
 //Équivalent
 A = [[NSMutableString alloc] initWithString:@"Hello"];
 B = [A retain];
+[A release];
 </code></pre></div>
       <div class='step' >
     
@@ -927,7 +931,7 @@ B = ??? ;// B est un "dangling pointer"
     
 <h1>@autorelease</h1>
 
-<p>Les bassins de libération automatiques se déclare avec @autorelease. L&#39;ancienne déclaration est correcte mais moins efficace</p>
+<p>Les bassins de libération automatiques se déclarent avec @autorelease. L&#39;ancienne déclaration est correcte mais moins efficace</p>
 <pre><code class='prettyprint '> //Beaucoup mieux
 for(NSString * chemin in _chemins_a_copier)
 {
@@ -935,24 +939,7 @@ for(NSString * chemin in _chemins_a_copier)
     {
         NSString * _nouveau_chemin = [_destination  stringByAppendingPathComponent:chemin];
 
-    /* Longue opération */     ]
-
-    }
-}
-</code></pre></div>
-      <div class='step' >
-    
-<h1>@autorelease</h1>
-
-<p>Les bassins de libération automatiques se déclare avec @autorelease. L&#39;ancienne déclaration est correcte mais moins efficace</p>
-<pre><code class='prettyprint '> //Beaucoup mieux
-for(NSString * chemin in _chemins_a_copier)
-{
-    @autorelease
-    {
-        NSString * _nouveau_chemin = [_destination  stringByAppendingPathComponent:chemin];
-
-    /* Longue opération */     ]
+    /* Longue opération */ 
 
     }
 }
@@ -1002,9 +989,9 @@ B.a = a;
 <h1>Aller plus loin</h1>
 
 <ul>
-<li><em>Transitioning to ARC Release Notes</em> - Apple documentation</li>
-<li><em>Advanced Memory Management Programming Guide</em> - Apple documentation</li>
-<li><em>Objective-C Automatic Reference Counting</em> <a href="http://clang.llvm.org/docs/AutomaticReferenceCounting.html">LLVM doc</a></li>
+<li>  Transitioning to ARC Release Notes* - Apple documentation</li>
+<li>  Advanced Memory Management Programming Guide* - Apple documentation</li>
+<li>  Objective-C Automatic Reference Counting* <a href="http://clang.llvm.org/docs/AutomaticReferenceCounting.html">LLVM doc</a></li>
 </ul>
 </div>
       <div class='step' >

@@ -14,20 +14,19 @@
 
 # Les bases  
 *	Objective-C : Langage C + paradigme objet
-*	L'allocation/désallocation sur le tas passe par les appels systèmes connues de la libC
-*	Allocation des objets sur la pile quasi-interdite (sauf les *fermetures*)
-*	Langage dynamique à cause du **moteur d'exécution** (différent de C, C++, ASM, LISP,...)
+*	L'allocation/désallocation sur le tas passe par les appels systèmes connus de la librarie C
+*	Allocation des objets sur la pile quasi-interdite (sauf les **fermetures**)
+*	Langage dynamique grâce au **moteur d'exécution** (différent de C, C++, ASM, LISP,...)
 
 ---
 
 #Allocation
 
-*   Compteur de référence: désallocation de l'objet lorsque le compteur est nul
+*   Compteur de référence : désallocation de l'objet lorsque le compteur est nul
 *   Classe 'racine' : NSObject
 *   Chaque objet hérite de NSObject directement ou indirectement : **c'est lui qui gère l'allocation/désallocation pour tout ses enfants**
 	
 ---
-= data-x="1000" data-scale="2"
 
 # MAObject
 
@@ -86,7 +85,7 @@ permet d'allouer la mémoire pour tout les objets.
 
 # Propriétaires
 
-L'implémentation des compteurs de référence permet de réfléchir en terme de **propriété sur un objet** plutôt qu'en terme d'allocation/désallocation mémoire à la **malloc/free**
+L'implémentation des compteurs de référence permet de réfléchir en terme de **propriété sur un objet** plutôt qu'en terme d'allocation/désallocation mémoire à la manière **malloc/free**
 
 ## Convention
 
@@ -99,10 +98,10 @@ L'implémentation des compteurs de référence permet de réfléchir en terme de
 
 # Propriétaires d'un objet
 
-Le ou les propriétaires d'un objet sont les derniers objet ayant appellé **alloc**, **copy**, **new**, **retain** ou équivalents et n'ayant pas appellé **release** par la suite. Comme aucune allocation d'objet sur la pile n'est toléré, lorsque l'on parle de **propriétaires**, on dit que le **pointeur possède l'objet qu'il pointe en mémoire.**
+Le ou les propriétaires d'un objet sont les derniers objet ayant appellé **alloc**, **copy**, **new**, **retain** ou équivalens et n'ayant pas appellé **release** par la suite. Comme aucune allocation d'objet sur la pile n'est tolérée, lorsque l'on parle de **propriétaires**, on dit que le **pointeur possède l'objet qu'il pointe en mémoire.**
  
-        NSString * foo = [[NSString] alloc] init];
-
+        NSString * foo =[[NSString] alloc] init];
+        
         // foo -> (NSString @ 0xFEBCD) 
         // Le pointeur 'foo' possède l'objet à l'adresse 0xFEBCD - RefCount = 1
         
@@ -131,10 +130,14 @@ On se sert de la méthode alloc de NSObject
 
 Allouer la classe ne suffit pas, il nous faut l'initialiser.
 
-     //Mauvaise pratiques
+     //Considéré comme mauvaise pratique
      Foo* foo = [Foo alloc];
      [foo initOfFoo];
-     //Bonne pratiques
+
+     //Considéré comme mauvaise pratique 
+     Foo* foo = [Foo new]; //Équivalent à alloc init
+
+     //Bonne pratique
      Foo *foo = [[Foo alloc] initOfFoo];
      
 ---
@@ -199,9 +202,9 @@ Tous les autres initialiseurs doivent finir par appeler l'**initialiseur désign
 
 # Échec dans l'initialisation
 
-Lors de l'échec dans l'initialiseurs :
+Lors de l'échec dans l'initialiseur :
 
-1.	Libérér les ressources non désallouées dans **dealloc** (objet, connexion ultérieurement libéré dans **init**)
+1.	Libérer les ressources non désallouées dans **dealloc** (objet, connexion ultérieurement libérée dans **init**,...)
 2.	Libérer **self** qui possède un compteur de 1 à cause de l'appel à **alloc**
 3.  Retournez **nil**
 
@@ -242,7 +245,7 @@ Lors de l'échec dans l'initialiseurs :
 
 # Destruction d'une classe
 
-*	Toujours appeller **\[super dealloc\]** en dernier dans la méthode **dealloc** de la classe
+*	Toujours appeler **\[super dealloc\]** en dernier dans la méthode **dealloc** de la classe
 
 ## Bon exemple:
 	
@@ -262,8 +265,8 @@ Lors de l'échec dans l'initialiseurs :
 
 # Remarque
 
-*   Cela ne sert à rien de mettre des variables à nil dans **dealloc**. Si vous devez le faire, c'est un problème de conception.
-*   On peut se dire que si l'appel à \[super dealloc\] désalloue la classe, ce n'est pas nécessaire d'appeller release
+*   Cela ne sert à rien, sauf justification particulière, de mettre des variables à nil dans **dealloc** 
+*   On peut se dire que si l'appel à \[super dealloc\] désalloue la classe, ce n'est pas nécessaire d'appeler release
 
     
 ---
@@ -310,9 +313,9 @@ Lors de l'échec dans l'initialiseurs :
 
 # Copie d'objet
 
-*	Implémentation du protocol **NSCopying** et de la méthode **copyWithZone:** qui est appellé par **copy**
-*	L'argument **NSZone** est un héritage et n'est plus utilisé
-*	Implémentation dépend de la sémantique voulue
+*	Implémentation du protocol **NSCopying** et de la méthode **copyWithZone:** appellée par **copy**
+*	L'argument **NSZone** est un héritage et n'est plus utilisé.
+*	Implémentation dépend de la sémantique voulue.
 
 ---
 
@@ -327,7 +330,7 @@ Lors de l'échec dans l'initialiseurs :
 
 # Copie d'un objet
      										  
-* Copie d'un objet dont la représentation en mémoire ne change pas (immuable) = copie superficielle. Faire la copie d'un objet immuable.
+* Copie d'un objet dont la représentation en mémoire ne change pas (immuable) = copie superficielle.
 * Copie d'un objet mutable = copie profonde
 
 
@@ -336,7 +339,7 @@ Lors de l'échec dans l'initialiseurs :
 
 # Exemple avec NSString
 
-Pointeur immuable ne veut pas dire pointeur immuable :
+Objet immuable ne veut pas dire pointeur immuable :
 
      NSString * string1 = @"String 1"; 
      string1 = @"Autre chose que String1"; //Le pointeur peut changer
@@ -385,8 +388,8 @@ La méthode **copy** de NSString incrémente le compteur de référence de l'obj
 
 # Autorelease pools
 
-* Les pools ou bassins de libérations automatiques permettent de gérer les cas de **transmissions de propriété**,à la création de **constructeurs de commodités** ou de libérer de la mémoire occupée inutilement.
-* Dans les applications graphiques (iOS ou Cocoa), un pool de libération est crée automatiquement dans la boucle d'évènement (NSRunLoop)
+* Les pools ou bassins de libérations automatiques permettent de gérer les cas de **transmissions de propriété**, à la création de **constructeurs de commodités** ou de libérer de la mémoire occupée inutilement.
+* Dans les applications graphiques (iOS ou Cocoa), un pool de libération est crée automatiquement dans la boucle d'évènement à chaque évènement (NSRunLoop)
 * Dans les applications non graphiques, le pool doit être explicitement crée.
 
 
@@ -424,8 +427,8 @@ La méthode **copy** de NSString incrémente le compteur de référence de l'obj
 # Autorelease
 
 *	On ajoute un objet dans le pool courant en lui envoyant le message **autorelease**
-*	À chaque appelle de la méthode **release** du pool, un message **release** est envoyé à chacun des objets présents dans le pool
-*	Si on appellé N fois la méthode **autorelease** sur un objet, il faudra appellé N fois la méthode **release** du pool
+*	À chaque appel de la méthode **release** du pool, un message **release** est envoyé à chacun des objets présents dans le pool
+*	Si on appellé N fois la méthode **autorelease** sur un objet, il faudra appeler N fois la méthode **release** du pool
 
 ---
 
@@ -466,7 +469,7 @@ Chaque thread possède sa propre boucle d'évènements.
 
 # Exemple
 		
-		//Un bassin a été crée avant d'appeller la méthode 
+		//Un bassin a été crée avant d'appeler la méthode 
 		NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
 		
        - (IBAction) buttonClicked:(id)sender
@@ -479,8 +482,8 @@ Chaque thread possède sa propre boucle d'évènements.
 		//Ajout de obj au bassin - obj Refcounter = 1
        }
        
-       // Dès le retour de la méthode l'évènement est traité est le bassin est vidangé 
-       
+       // Dès le retour de la méthode l'évènement est traité est le "bassin est vidangé"
+
        [pool release];
        //Envoie un message release à tous les éléments du bassin
        // obj Refcounter = 0
@@ -491,8 +494,8 @@ Chaque thread possède sa propre boucle d'évènements.
 
 # Constructeurs de commodités
 *	Permet de construire un objet dont on a pas forcément besoin par la suite
-*	Utilisation d'une méthode de classe et non d'instance
-*	L'objet créer est ajouté dans le **bassin de libération** avant d'être retourné
+*	Utilisation d'une **méthode de classe et non d'instance**
+*	L'objet crée est ajouté dans le **bassin de libération** avant d'être retourné
 
 ---
 
@@ -573,7 +576,7 @@ Cas le plus trivial
 
 # Référence forte
 
-But : garder l'ancienne valeur + relâcher l'ancienne valeur sans "leaks"
+But : garder l'ancienne valeur + relâcher l'ancienne valeur sans "leak"
 
 	 //Comment faire ?
 	 
@@ -635,7 +638,7 @@ Même problématique que la référence forte simple
 	 {
 	 	NSString * copy = [nom copy]; // OBLIGATOIRE : si nom == _nom car
 	 	[_nom release];               // si les objet sont immuables, ils utilisent
-	 	_nom = nom;                   // des copies superficielles
+	 	_nom = nom;                   // généralement des copies superficielles
 	 
 	 } 
 	 @end	 	 	 
@@ -729,7 +732,7 @@ Il faut normalement éviter que deux objets possèdent chacun une référence fo
      @implementation Personne
 	 //Clang crée automatiquement une variable préfixié par "_" (underscore)
 	 // si aucun synthetize ne précise la méthode
-	 // ATTENTION : seul le front-end LLVM le permet
+	 // ATTENTION : le front-end GCC ne le permet pas
      
      @end 
 ---
@@ -760,8 +763,7 @@ Le runtime implémentent **les mêmes mutateurs** que ceux vus précédemment
     
     [someName setString:@"Debajit"];
     
-    //Que vaut p.name si la property est retain ? copy ?
-    //Qu'attendrait t'on ?
+    //Qu'attendrait t'on dans ce contexte ?
     
 ---
 
@@ -780,7 +782,6 @@ Le runtime implémentent **les mêmes mutateurs** que ceux vus précédemment
     [someName setString:@"Debajit"];
     
     //Que vaut p.name si la property est retain ? copy ?
-    //Qu'attendrait t'on ?
     
     // -> retain : p.name = @"Debajit"
     // -> copy : p.name = @"Chris"
@@ -796,15 +797,16 @@ Les types **immuables** doivent normalement utiliser des mutateurs avec référe
 
 # Introduction à l'ARC
 
-*	L'ARC **n'est pas** un ramasse-miette
+*	L'ARC **n'est pas** un ramasse-miette.
+*   Remplace le garbage collector instauré sur Mac OS X 10.5 à partir de 10.7
 *	Activer l'ARC = demander au compilateur d'écrire les messages **retain**, **release** et **autorelease** à votre place
-*	Inconvénient : pas d'action directe sur la gestion mémoire
+*	Inconvénients : pas d'action directe sur la gestion mémoire, non disponible sur les versions Mac < 10.7
 
 ---
 
 # ARC et LLVM
 
-* LLVM garde les concepts de **propriétés sur les ojets**
+* LLVM garde les concepts de **propriétés sur les objets**
 * Interdiction d'envoyer **retain**, **release** et **autorelease**
 * Le type de liaison entre objet (référence forte, faible, copie) se fait à **la déclaration** de la variable ou de la propriété.
 
@@ -834,9 +836,8 @@ Référence forte avec transfert de propriété. C'est la **valeur par défaut s
     //Équivalent
     A = [[NSMutableString alloc] initWithString:@"Hello"];
     B = [A retain];
+    [A release];
    
-    
-    
     
 ---
 
@@ -907,12 +908,11 @@ L'ARC respecte de manière bête et méchante les rêgles de gestion mémoire à
     	// ARC ajoute un [array release]; à la fin
     }
     
-
 ---
 
 # @autorelease
 
-Les bassins de libération automatiques se déclare avec @autorelease. L'ancienne déclaration est correcte mais moins efficace
+Les bassins de libération automatiques se déclarent avec @autorelease. L'ancienne déclaration est correcte mais moins efficace
 
      //Beaucoup mieux
 	for(NSString * chemin in _chemins_a_copier)
@@ -921,25 +921,7 @@ Les bassins de libération automatiques se déclare avec @autorelease. L'ancienn
     	{
 			NSString * _nouveau_chemin = [_destination 	stringByAppendingPathComponent:chemin];
 	
-		/* Longue opération */		]
-	
-		}
-	}
-
----
-
-# @autorelease
-
-Les bassins de libération automatiques se déclare avec @autorelease. L'ancienne déclaration est correcte mais moins efficace
-
-     //Beaucoup mieux
-	for(NSString * chemin in _chemins_a_copier)
-    {
-    	@autorelease
-    	{
-			NSString * _nouveau_chemin = [_destination 	stringByAppendingPathComponent:chemin];
-	
-		/* Longue opération */		]
+		/* Longue opération */	
 	
 		}
 	}
@@ -987,9 +969,9 @@ Même remarque que précédemment
 
 # Aller plus loin
 
-* *Transitioning to ARC Release Notes* - Apple documentation
-* *Advanced Memory Management Programming Guide* - Apple documentation
-* *Objective-C Automatic Reference Counting* [LLVM doc][1]
+*   Transitioning to ARC Release Notes* - Apple documentation
+*   Advanced Memory Management Programming Guide* - Apple documentation
+*   Objective-C Automatic Reference Counting* [LLVM doc][1]
 
 
 
