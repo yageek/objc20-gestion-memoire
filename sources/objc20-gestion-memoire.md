@@ -28,8 +28,7 @@
 	
 ---
 
-# MAObject
-
+# [MAObject][1]
 
     @implementation MAObject {
         Class isa;
@@ -53,6 +52,7 @@
         if(newCount == 0) //Si le compteur < 0 -> désallocation
             [self dealloc];
     }
+*   Source : [NSBlog - Mike Ash][1]
 
 [1]:http://www.mikeash.com/pyblog/friday-qa-2013-01-25-lets-build-nsobject.html
 ---
@@ -969,14 +969,14 @@ Même remarque que précédemment
 
 # Aller plus loin
 
-*   Transitioning to ARC Release Notes* - Apple documentation
-*   Advanced Memory Management Programming Guide* - Apple documentation
-*   Objective-C Automatic Reference Counting* [LLVM doc][1]
+*   *Transitioning to ARC Release Notes* - Apple documentation
+*   *Advanced Memory Management Programming Guide* - Apple documentation
+*   *Objective-C Automatic Reference Counting* [LLVM doc][2]
 
 
 
 
-[1]:http://clang.llvm.org/docs/AutomaticReferenceCounting.html 
+[2]:http://clang.llvm.org/docs/AutomaticReferenceCounting.html 
 
 ---
 

@@ -30,9 +30,9 @@
 
 <h2>HEINRICH Yannick</h2>
 
-<h2><a href="http://clang.llvm.org/docs/AutomaticReferenceCounting.html">@YaGeek</a></h2>
+<h2><a href="http://www.mikeash.com/pyblog/friday-qa-2013-01-25-lets-build-nsobject.html">@YaGeek</a></h2>
 
-<h2><a href="http://blog.yageek.net">http//blog.yageek.net</a></h2>
+<h2><a href="http://clang.llvm.org/docs/AutomaticReferenceCounting.html">http//blog.yageek.net</a></h2>
 
 <h2>Mars 2013</h2>
 
@@ -61,7 +61,7 @@
 </div>
       <div class='step' >
     
-<h1>MAObject</h1>
+<h1><a href="http://www.mikeash.com/pyblog/friday-qa-2013-01-25-lets-build-nsobject.html">MAObject</a></h1>
 <pre><code class='prettyprint '>@implementation MAObject {
     Class isa;
     volatile int32_t retainCount; //Compteur de référence
@@ -84,7 +84,11 @@
     if(newCount == 0) //Si le compteur < 0 -> désallocation
         [self dealloc];
 }
-</code></pre></div>
+</code></pre>
+<ul>
+<li>  Source : <a href="http://www.mikeash.com/pyblog/friday-qa-2013-01-25-lets-build-nsobject.html">NSBlog - Mike Ash</a></li>
+</ul>
+</div>
       <div class='step' >
     <pre><code class='prettyprint '> - (void)dealloc
 {   //Appel système standard
@@ -989,9 +993,9 @@ B.a = a;
 <h1>Aller plus loin</h1>
 
 <ul>
-<li>  Transitioning to ARC Release Notes* - Apple documentation</li>
-<li>  Advanced Memory Management Programming Guide* - Apple documentation</li>
-<li>  Objective-C Automatic Reference Counting* <a href="http://clang.llvm.org/docs/AutomaticReferenceCounting.html">LLVM doc</a></li>
+<li>  <em>Transitioning to ARC Release Notes</em> - Apple documentation</li>
+<li>  <em>Advanced Memory Management Programming Guide</em> - Apple documentation</li>
+<li>  <em>Objective-C Automatic Reference Counting</em> <a href="http://clang.llvm.org/docs/AutomaticReferenceCounting.html">LLVM doc</a></li>
 </ul>
 </div>
       <div class='step' >
