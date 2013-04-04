@@ -390,7 +390,7 @@ La méthode **copy** de NSString incrémente le compteur de référence de l'obj
     NSString * string1 = @"HELLO";
     NSString* copyOfString1 = [string1 copy];
     
-  BOOL equal = (string1 == copyOfString1) ; // -> equal = YES
+    BOOL equal = (string1 == copyOfString1) ; // -> equal = YES
 
 Copie mutable à partir d'un objet immuable :
 

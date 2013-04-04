@@ -416,9 +416,9 @@ C->a = [a retain];   //a RefCounter = 3
 <p>La méthode <strong>copy</strong> de NSString incrémente le compteur de référence de l&#39;objet et renvoie le même objet pointé :</p>
 <pre><code class='prettyprint '>NSString * string1 = @"HELLO";
 NSString* copyOfString1 = [string1 copy];
-</code></pre>
-<p>BOOL equal = (string1 == copyOfString1) ; // -&gt; equal = YES</p>
 
+BOOL equal = (string1 == copyOfString1) ; // -> equal = YES
+</code></pre>
 <p>Copie mutable à partir d&#39;un objet immuable :</p>
 <pre><code class='prettyprint '>NSString * str1  =@"Hello";
 NSMutableString * str2 = [str1 mutableCopy];
