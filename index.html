@@ -30,13 +30,13 @@
 
 <h2>HEINRICH Yannick</h2>
 
-<h2><a href="http://www.mikeash.com/pyblog/friday-qa-2013-01-25-lets-build-nsobject.html">@YaGeek</a></h2>
-
-<h2><a href="http://clang.llvm.org/docs/AutomaticReferenceCounting.html">http//blog.yageek.net</a></h2>
+<h2><a href="http://twitter.com/YaGeek">@YaGeek</a></h2>
 
 <h2>Mars 2013</h2>
 
 <p><a href="http://creativecommons.org/licenses/by-sa/3.0"><img src="images/cc.png" alt="Creative Commons License"></a></p>
+
+<p><a href="http://blog.yageek.net/objc20-gestion-memoire">http://blog.yageek.net/objc20-gestion-memoire</a></p>
 </div>
       <div class='step' >
     
@@ -45,7 +45,7 @@
 <ul>
 <li>  Objective-C : Langage C + paradigme objet</li>
 <li>  L&#39;allocation/désallocation sur le tas passe par les appels systèmes connus de la librarie C</li>
-<li>  Allocation des objets sur la pile quasi-interdite (sauf les <strong>fermetures</strong>)</li>
+<li>  Allocation des objets sur la pile quasi-interdite (sauf les fermetures = blocks)</li>
 <li>  Langage dynamique grâce au <strong>moteur d&#39;exécution</strong> (différent de C, C++, ASM, LISP,...)</li>
 </ul>
 </div>
@@ -86,7 +86,7 @@
 }
 </code></pre>
 <ul>
-<li>  Source : <a href="http://www.mikeash.com/pyblog/friday-qa-2013-01-25-lets-build-nsobject.html">NSBlog - Mike Ash</a></li>
+<li>  Source : <a href="http://twitter.com/YaGeek">NSBlog - Mike Ash</a></li>
 </ul>
 </div>
       <div class='step' >
@@ -250,6 +250,16 @@ Foo *foo = [[Foo alloc] initOfFoo];
 }
 @end
 </code></pre></div>
+      <div class='step' >
+    
+<h1>Pas d&#39;appel aux accesseurs</h1>
+
+<ul>
+<li>  Appels aux accesseurs déconseillé (interdit?) dans les méthodes <strong>init</strong> et <strong>dealloc</strong></li>
+<li>  Accès direct à la variable (NB : on peut utiliser l&#39;opérateur <strong>-&gt;</strong>)</li>
+<li>  Utilisation des accesseurs peut déclencher des notifications KVC/KVO, des effet de bors liées à des accesseurs/mutateurs personnalisés ou surchargé dans les classes filles</li>
+</ul>
+</div>
       <div class='step' >
     
 <h1>Échec dans l&#39;initialisation</h1>
@@ -478,7 +488,7 @@ NSString * c = [[NSString alloc] init];
 
 NSDictionary * dict = [NSDictionary alloc] initWithObject:array forKey:c];
 //RefCounter a = 2 - RefCounter b = 2 
-//RefCounter c = 2
+//RefCounter c = 1 - dict possède une copie des clefs
 //RefCounter array = 2
 //RefCounter dict = 1
 
@@ -501,7 +511,7 @@ NSDictionary * dict = [NSDictionary alloc] initWithObject:array forKey:c];
 <h1>Autorelease pools</h1>
 
 <ul>
-<li>Les pools ou bassins de libérations automatiques permettent de gérer les cas de <strong>transmissions de propriété</strong>, à la création de <strong>constructeurs de commodités</strong> ou de <strong>libérer de la mémoire occupée inutilement</strong>.</li>
+<li>Les pools ou bassins de libérations automatiques permettent de gérer les cas de <strong>transmissions de propriété</strong>, la création de <strong>constructeurs de commodités</strong> et <strong>libération de la mémoire occupée inutilement</strong> dans des processus de longue durée.</li>
 <li>Dans les applications graphiques (iOS ou Cocoa), un pool de libération est crée automatiquement dans la boucle d&#39;évènement à chaque évènement (NSRunLoop)</li>
 <li>Dans les applications non graphiques, le pool doit être explicitement crée.</li>
 </ul>

@@ -2,20 +2,21 @@
 
 ## HEINRICH Yannick
 ## [@YaGeek][1]
-## [http//blog.yageek.net][2]
 ## Mars 2013
 
 [![Creative Commons License](images/cc.png)][3]
 
+[http://blog.yageek.net/objc20-gestion-memoire][2]
+
 [1]: http://twitter.com/YaGeek
-[2]: http://blog.yageek.net
+[2]: http://blog.yageek.net/objc20-gestion-memoire
 [3]: http://creativecommons.org/licenses/by-sa/3.0
 ---
 
 # Les bases  
 *	Objective-C : Langage C + paradigme objet
 *	L'allocation/désallocation sur le tas passe par les appels systèmes connus de la librarie C
-*	Allocation des objets sur la pile quasi-interdite (sauf les **fermetures**)
+*	Allocation des objets sur la pile quasi-interdite (sauf les fermetures = blocks)
 *	Langage dynamique grâce au **moteur d'exécution** (différent de C, C++, ASM, LISP,...)
 
 ---
@@ -28,7 +29,7 @@
 	
 ---
 
-# [MAObject][1]
+# [MAObject][4]
 
     @implementation MAObject {
         Class isa;
@@ -54,7 +55,7 @@
     }
 *   Source : [NSBlog - Mike Ash][1]
 
-[1]:http://www.mikeash.com/pyblog/friday-qa-2013-01-25-lets-build-nsobject.html
+[4]:http://www.mikeash.com/pyblog/friday-qa-2013-01-25-lets-build-nsobject.html
 ---
 
      - (void)dealloc
@@ -225,6 +226,14 @@ Tous les autres initialiseurs doivent finir par appeler l'**initialiseur désign
     }
     @end
 
+
+---
+
+# Pas d'appel aux accesseurs
+
+*   Appels aux accesseurs déconseillé (interdit?) dans les méthodes **init** et **dealloc**
+*   Accès direct à la variable (NB : on peut utiliser l'opérateur **->**)
+*   Utilisation des accesseurs peut déclencher des notifications KVC/KVO, des effet de bors liées à des accesseurs/mutateurs personnalisés ou surchargé dans les classes filles
 
 ---
 
@@ -451,7 +460,7 @@ Copie mutable à partir d'un objet immuable :
 
     NSDictionary * dict = [NSDictionary alloc] initWithObject:array forKey:c];
     //RefCounter a = 2 - RefCounter b = 2 
-    //RefCounter c = 2
+    //RefCounter c = 1 - dict possède une copie des clefs
     //RefCounter array = 2
     //RefCounter dict = 1
 
@@ -475,7 +484,7 @@ Copie mutable à partir d'un objet immuable :
 
 # Autorelease pools
 
-* Les pools ou bassins de libérations automatiques permettent de gérer les cas de **transmissions de propriété**, à la création de **constructeurs de commodités** ou de **libérer de la mémoire occupée inutilement**.
+* Les pools ou bassins de libérations automatiques permettent de gérer les cas de **transmissions de propriété**, la création de **constructeurs de commodités** et **libération de la mémoire occupée inutilement** dans des processus de longue durée.
 * Dans les applications graphiques (iOS ou Cocoa), un pool de libération est crée automatiquement dans la boucle d'évènement à chaque évènement (NSRunLoop)
 * Dans les applications non graphiques, le pool doit être explicitement crée.
 
@@ -1095,10 +1104,10 @@ Même remarque que précédemment
 
 *   *Transitioning to ARC Release Notes* - Apple documentation
 *   *Advanced Memory Management Programming Guide* - Apple documentation
-*   *Objective-C Automatic Reference Counting* [LLVM doc][2]
+*   *Objective-C Automatic Reference Counting* [LLVM doc][5]
 
 
 
 
-[2]:http://clang.llvm.org/docs/AutomaticReferenceCounting.html 
+[5]:http://clang.llvm.org/docs/AutomaticReferenceCounting.html 
 
