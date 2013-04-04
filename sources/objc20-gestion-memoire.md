@@ -14,10 +14,10 @@
 ---
 
 # Les bases  
-*	Objective-C : Langage C + paradigme objet
-*	L'allocation/désallocation sur le tas passe par les appels systèmes connus de la librarie C
-*	Allocation des objets sur la pile quasi-interdite (sauf les fermetures = blocks)
-*	Langage dynamique grâce au **moteur d'exécution** (différent de C, C++, ASM, LISP,...)
+* Objective-C : Langage C + paradigme objet
+* L'allocation/désallocation sur le tas passe par les appels systèmes connus de la librarie C
+* Allocation des objets sur la pile quasi-interdite (sauf les fermetures = blocks)
+* Langage dynamique grâce au **moteur d'exécution** (différent de C, C++, ASM, LISP,...)
 
 ---
 
@@ -25,8 +25,8 @@
 
 *   Compteur de référence : désallocation de l'objet lorsque le compteur est nul
 *   Classe 'racine' : NSObject
-*   Chaque objet hérite de NSObject directement ou indirectement : **c'est lui qui gère l'allocation/désallocation pour tout ses enfants**
-	
+*   Chaque objet hérite de NSObject directement ou indirectement : **c'est lui qui gère l'allocation/désallocation pour tous ses enfants**
+  
 ---
 
 # [MAObject][4]
@@ -36,19 +36,19 @@
         volatile int32_t retainCount; //Compteur de référence
     }
       + (id)alloc
-    {	//Appel au moteur d'éxecution pour instancier
+    { //Appel au moteur d'éxecution pour instancier
         MAObject *obj = calloc(1, class_getInstanceSize(self)); 
         obj->isa = self;
         obj->retainCount = 1; // Mise à 1
         return obj;
     }
      - (id)retain
-    {	//Incrémentation atomique
+    { //Incrémentation atomique
         OSAtomicIncrement32(&retainCount);
         return self;
     }
     - (oneway void)release
-    {	//Décrémentation atomique
+    { //Décrémentation atomique
         uint32_t newCount = OSAtomicDecrement32(&retainCount);
         if(newCount == 0) //Si le compteur < 0 -> désallocation
             [self dealloc];
@@ -59,7 +59,7 @@
 ---
 
      - (void)dealloc
-    { 	//Appel système standard
+    {   //Appel système standard
         free(self);
     }
      - (id)init
@@ -127,7 +127,7 @@ Le ou les propriétaires d'un objet sont les derniers objet ayant appellé **all
 ---
 # Exemple
 ```javascript
-NSString* foo = [[NSString alloc] init];
+NSString* foo = [[NSString alloc] init];
 // foo -> (NSString @ 0xFEBCD) 
 // Le pointeur 'foo' possède l'objet à l'adresse 0xFEBCD - RefCount = 1
 
@@ -140,7 +140,7 @@ NSString* foo2 = [foo retain];
 // foo2 le possède encore
 
 [foo2 release];
-//Plus personne ne possèdent l'objet - RefCount = 0  -> désallocation
+//Plus personne ne possède l'objet - RefCount = 0  -> désallocation
 ```
 
 ---
@@ -177,9 +177,9 @@ Foo *foo = [[Foo alloc] initOfFoo];
 Exemple : une classe *Personne*
 
     @interface TShirt {
-    	
-    	NSUInteger _taille;
-    	NSColor * _couleur;
+      
+      NSUInteger _taille;
+      NSColor * _couleur;
 
     }
     @end
@@ -197,12 +197,12 @@ Chaque classe doit avoir un **initialiseur désigné**, c'est celui qui est en c
    
     - (id) initWithTaille:(NSUInteger * )taille AndCouleur:(NSColor *) couleur
     {
-    	if(self = [super init])
-    	{
-    		_taille = taille
-    		_couleur = [couleur retain];
-    	}
-    	return self;
+      if(self = [super init])
+      {
+        _taille = taille
+        _couleur = [couleur retain];
+      }
+      return self;
     }
     @end
     
@@ -216,13 +216,13 @@ Tous les autres initialiseurs doivent finir par appeler l'**initialiseur désign
     // ...
     - (id) initWithTaille:(NSUInteger) taille
     {
-    	NSColor * defaut = [NSColor redColor];
-    	return [self initWitTaille:taille AndCouleur:default];
+      NSColor * defaut = [NSColor redColor];
+      return [self initWitTaille:taille AndCouleur:default];
     }    
     - (id) initWithColor:(NSColor * ) couleur
     {
-    	NSUInteger default = 36;
-    	return [self initWitTaille:default AndCouleur:couleur];
+      NSUInteger default = 36;
+      return [self initWitTaille:default AndCouleur:couleur];
     }
     @end
 
@@ -231,9 +231,9 @@ Tous les autres initialiseurs doivent finir par appeler l'**initialiseur désign
 
 # Pas d'appel aux accesseurs
 
-*   Appels aux accesseurs déconseillé (interdit?) dans les méthodes **init** et **dealloc**
+*   Appels aux accesseurs déconseillés (interdits ?) dans les méthodes **init** et **dealloc**
 *   Accès direct à la variable (NB : on peut utiliser l'opérateur **->**)
-*   Utilisation des accesseurs peut déclencher des notifications KVC/KVO, des effet de bors liées à des accesseurs/mutateurs personnalisés ou surchargé dans les classes filles
+*   Utilisation des accesseurs peut déclencher des notifications KVC/KVO, des effets de bords liées à des accesseurs/mutateurs personnalisés ou surchargés dans les classes filles
 
 ---
 
@@ -241,62 +241,64 @@ Tous les autres initialiseurs doivent finir par appeler l'**initialiseur désign
 
 Lors de l'échec dans l'initialiseur :
 
-1.	Libérer les ressources non désallouées dans **dealloc** (objet, connexion ultérieurement libérée dans **init**,...)
-2.	Libérer **self** qui possède un compteur de 1 à cause de l'appel à **alloc**
+1.  Libérer les ressources non désallouées dans **dealloc** (objet, connexion ultérieurement libérée dans **init**,...)
+2.  Libérer **self** qui possède un compteur de 1 à cause de l'appel à **alloc**
 3.  Retournez **nil**
-
 
 ---
 
+
 # Exemple
-	@implementation Tableaux
-	//Possède deux iVar : _tab1 -> NSMutableArray et _tab2 -> NSArray
-	- (id) init
-	{
-		if([self = super init])   //RefCounter = 1
-		{
-			_tab1 = [[NSMutableArray alloc] init];
-			if(!_tab)//Si erreur
-			{
-				[self release];	   //RefCount=0->self dealloc
-				return nil; 	   //Retour erreur
-			}
-			_tab2 = [[NSArray alloc] initWithContentsOfFile:@"…"];
-			if(!_tab2)
-			{
-				[self release];   //RefCount=0->self dealloc
-				return nil;   //Retour erreur;
-			}
-		}
-		returl self;
-	}
-	- (void) dealloc
-	{
-		[_tab1 release];   //Désallocation
-		[_tab2 release];   //Désallocation
-		[super dealloc];
-		//Rappel : envoyer un message à nil ne fait rien 
-		//-> pas besoin de tester if(!_tab1) [_tab1 release];
-	}
+
+      @implementation Tableaux
+      //Possède deux iVar : _tab1 -> NSMutableArray et _tab2 -> NSArray
+      - (id) init
+      {
+        if([self = super init])   //RefCounter = 1
+        {
+          _tab1 = [[NSMutableArray alloc] init];
+          if(!_tab)//Si erreur
+          {
+            [self release];    //RefCount=0->self dealloc
+            return nil;      //Retour erreur
+          }
+          _tab2 = [[NSArray alloc] initWithContentsOfFile:@"…"];
+          if(!_tab2)
+          {
+            [self release];   //RefCount=0->self dealloc
+            return nil;   //Retour erreur;
+          }
+        }
+        returl self;
+      }
+      - (void) dealloc
+      {
+        [_tab1 release];   //Désallocation
+        [_tab2 release];   //Désallocation
+        [super dealloc];
+        //Rappel : envoyer un message à nil ne fait rien 
+        //-> pas besoin de tester if(!_tab1) [_tab1 release];
+      }
+
 ---
 
 # Destruction d'une classe
 
-*	Toujours appeler **\[super dealloc\]** en dernier dans la méthode **dealloc** de la classe
+* Toujours appeler **\[super dealloc\]** en dernier dans la méthode **dealloc** de la classe
 
 ## Bon exemple:
-	
+  
      - (void) dealloc
      {
-     	[_couleur release];
-    	[super dealloc]; // NSObject se charge de désallouer 
+      [_couleur release];
+      [super dealloc]; // NSObject se charge de désallouer 
     }
 ## Mauvais exemple:
-	
+  
      - (void) dealloc
      {
-    	[super dealloc]; // Désallocation de la classe
-    	[_couleur release]; //Erreur pointeur invalide car désalloué
+      [super dealloc]; // Désallocation de la classe
+      [_couleur release]; //Erreur pointeur invalide car désalloué
     }
 ---
 
@@ -313,22 +315,22 @@ Lors de l'échec dans l'initialiseur :
     @interface A : NSObject {} @end
     @interface B : NSObject
     {
-    	A *a;
+      A *a;
     }
     - (id) dealloc
     {
-    	[a release];
-    	[super dealloc];
+      [a release];
+      [super dealloc];
     }
     @end
     @interface : NSObject C
     {
-    	A *a;
+      A *a;
     }
     - (id) dealloc
     {
-    	[super dealloc];
-    	[a release]; //Release n'est jamais envoyé à a
+      [super dealloc];
+      [a release]; //Release n'est jamais envoyé à a
     }
     @end
     
@@ -350,23 +352,23 @@ Lors de l'échec dans l'initialiseur :
 
 # Copie d'objet
 
-*	Implémentation du protocol **NSCopying** et de la méthode **copyWithZone:** appellée par **copy**
-*	L'argument **NSZone** est un héritage et n'est plus utilisé.
-*	Implémentation dépend de la sémantique voulue.
+* Implémentation du protocol **NSCopying** et de la méthode **copyWithZone:** appellée par **copy**
+* L'argument **NSZone** est un héritage et n'est plus utilisé.
+* Implémentation dépend de la sémantique voulue.
 
 ---
 
 # Copie d'objet
 
-*	Les objets de bases du Frameworks présentent une version **mutable** et une version **immuable**
-*	Immuable : **l'objet pointé en mémoire** est immuable
-*	Mutable : **l'objet pointé en mémoire** est mutable
-*	Objet immuable ne veut pas dire pointeur immuable
+* Les objets de bases du Frameworks présentent une version **mutable** et une version **immuable**
+* Immuable : **l'objet pointé en mémoire** est immuable
+* Mutable : **l'objet pointé en mémoire** est mutable
+* Objet immuable ne veut pas dire pointeur immuable
 
 ---
 
 # Copie d'un objet
-     										  
+                          
 * Copie d'un objet dont la représentation en mémoire ne change pas (immuable) = copie superficielle.
 * Copie d'un objet mutable = copie profonde
 * Copie mutable d'un objet immuable : utilisation de **mutableCopyWithZone:**
@@ -388,7 +390,7 @@ La méthode **copy** de NSString incrémente le compteur de référence de l'obj
     NSString * string1 = @"HELLO";
     NSString* copyOfString1 = [string1 copy];
     
-	BOOL equal = (string1 == copyOfString1) ; // -> equal = YES
+  BOOL equal = (string1 == copyOfString1) ; // -> equal = YES
 
 Copie mutable à partir d'un objet immuable :
 
@@ -403,7 +405,7 @@ Copie mutable à partir d'un objet immuable :
      //Une copie superficelle 
      - (id) copyWithZone:(NSZone *)
      {
-     	return [self retain];
+      return [self retain];
      }
      
 
@@ -413,9 +415,9 @@ Copie mutable à partir d'un objet immuable :
      - (id) copyWithZone:(NSZone *zone)
      {
         //[self class] obligatoire pour les classes filles
-     	id copie = [[[self class] allocWithZone:zone]
-     	          initWithTaille:[self taille] AndCouleur:[self couleur]];
-     	 return copie;
+      id copie = [[[self class] allocWithZone:zone]
+                initWithTaille:[self taille] AndCouleur:[self couleur]];
+       return copie;
      } 
 
      //Une copie profonde (classe fille dont la mère implémente une copy)
@@ -423,10 +425,10 @@ Copie mutable à partir d'un objet immuable :
      
      - (id) copyWithZone:(NSZone *zone)
      {
-     	id copie = [super copyWithZone:zone];
-     	
-     	/* Autre opérations éventuelles */
-    	return copie;
+      id copie = [super copyWithZone:zone];
+      
+      /* Autre opérations éventuelles */
+      return copie;
      } 
 
 ---
@@ -442,10 +444,10 @@ Copie mutable à partir d'un objet immuable :
 
 # Exemple
 
-    NSString * a = [[NSString alloc] init];
+    NSString * a = [[NSString alloc] init];
     //RefCounter a = 1
 
-    NSString * b = [[NSString alloc] init];
+    NSString * b = [[NSString alloc] init];
     //RefCounter b = 1
 
     NSArray * array = [[NSArray alloc] intiWithObjects:a,b,nil];
@@ -455,7 +457,7 @@ Copie mutable à partir d'un objet immuable :
     [a release]; //RefCounter a = 1
     [b release]; //RefCounter b = 1
 
-    NSString * c = [[NSString alloc] init];
+    NSString * c = [[NSString alloc] init];
     //RefCounter c = 1
 
     NSDictionary * dict = [NSDictionary alloc] initWithObject:array forKey:c];
@@ -466,7 +468,7 @@ Copie mutable à partir d'un objet immuable :
 
     [array release];
     //RefCounter a = 1 - RefCounter b = 1 
-    //RefCounter c = 2
+    //RefCounter c = 1
     //RefCounter array = 1
     //RefCounter dict = 1
 
@@ -522,31 +524,32 @@ Copie mutable à partir d'un objet immuable :
 
 # Libérer de la mémoire
 
-	//Mémoire perdue
-	@interface Copieur : NSObject
-	{
-			NSArray * _chemins_a_copier; // Très grand 
-			NSString * _destination;
-	}
-	@end
-	/*..*/
-	for(NSString * chemin in _chemins_a_copier)
+    //Mémoire perdue
+    @interface Copieur : NSObject
     {
-	NSString * _nouveau_chemin = [_destination stringByAppendingPathComponent:chemin];
-	
-		/* Longue opération */
+        NSArray * _chemins_a_copier; // Très grand 
+        NSString * _destination;
+    }
+    @end
+    /*..*/
+    for(NSString * chemin in _chemins_a_copier)
+      {
+    NSString * _nouveau_chemin = [_destination stringByAppendingPathComponent:chemin];
+    
+      /* Longue opération */
+      }
+
+      //Beaucoup mieux
+    for(NSString * chemin in _chemins_a_copier)
+      {
+      NSAutorelease * pool = [[NSAutoreleasePool alloc] init];
+    NSString * _nouveau_chemin = [_destination stringByAppendingPathComponent:chemin];
+    
+      /* Longue opération */    
+    
+      [pool release];
     }
 
-    //Beaucoup mieux
-	for(NSString * chemin in _chemins_a_copier)
-    {
-    NSAutorelease * pool = [[NSAutoreleasePool alloc] init];
-	NSString * _nouveau_chemin = [_destination stringByAppendingPathComponent:chemin];
-	
-		/* Longue opération */		
-	
-		[pool release];
-	}
 ---
 
 # Boucle d'évènements
@@ -573,9 +576,9 @@ UIEvent * event = [self treatEvent];
 NSAutoreleasePool*myPool =[[NSAutoreleasePool alloc] init];
 
 /* Traitement d'un évement :
-	- Action sur un bouton
-	- Connexion entrante
-	- Notification
+  - Action sur un bouton
+  - Connexion entrante
+  - Notification
    ....
 */
 [myPool release];
@@ -588,13 +591,13 @@ Chaque thread possède sa propre boucle d'évènements.
 
 # Exemple
 
-```	objc
+``` objc
 //Un bassin a été crée avant d'appeler la méthode 
 NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
 
 - (IBAction) buttonClicked:(id)sender
 { 
-	
+  
 NSString * message = [NSString stringWithFormat:@"Sender : %p",sender];
 // message RefCounter = 1
 
@@ -613,9 +616,9 @@ NSObject * obj = [[[NSObject] alloc] init] autorelease];
 ---
 
 # Constructeurs de commodités
-*	Permet de construire un objet dont on a pas forcément besoin par la suite
-*	Utilisation d'une **méthode de classe et non d'instance**
-*	L'objet crée est ajouté dans le **bassin de libération** avant d'être retourné
+* Permet de construire un objet dont on a pas forcément besoin par la suite
+* Utilisation d'une **méthode de classe et non d'instance**
+* L'objet crée est ajouté dans le **bassin de libération** avant d'être retourné
 
 ---
 
@@ -623,7 +626,7 @@ NSObject * obj = [[[NSObject] alloc] init] autorelease];
 
      + (id) tshirtWithRed
      {
-     	return [[[TShirt alloc] initWithColor:[UIColor redColor]] autorelease];
+      return [[[TShirt alloc] initWithColor:[UIColor redColor]] autorelease];
      }
      
 Attention dans le cas d'une sous-classe
@@ -632,7 +635,7 @@ Attention dans le cas d'une sous-classe
     
     + (id) tshirtpersonnaliseWithRed
      {
-     	return [[[self alloc] initWithColor:[UIColor redColor]] autorelease];
+      return [[[self alloc] initWithColor:[UIColor redColor]] autorelease];
      }
      
      //Appel à self permet de réutiliser les constructeurs des classes parentes
@@ -649,9 +652,9 @@ Attention dans le cas d'une sous-classe
 
 # Types de mutateurs
 
-*	Assignation **avec** transfert de propriété (**référence forte**)
-*	Assignation **sans** transfert de propriété (**référence faible**)
-*  	Assignation d'une **copie** de l'objet (**référence forte sur nouvel objet**)
+* Assignation **avec** transfert de propriété (**référence forte**)
+* Assignation **sans** transfert de propriété (**référence faible**)
+* Assignation d'une **copie** de l'objet (**référence forte sur nouvel objet**)
 
 ---
 
@@ -659,15 +662,17 @@ Attention dans le cas d'une sous-classe
 
 Cas le plus trivial 
 
-	 //Comment faire ?
-	 
-	 @interface VuePersonnalisee : UIView {
-	 
-		id<UItableViewDelegate> _delegate ;
-	}
-	@end
-	
-	// Comment écrire le mutateur de '_delegate' ?
+```objc
+ //Comment faire ?
+ 
+ @interface VuePersonnalisee : UIView {
+ 
+  id<UItableViewDelegate> _delegate ;
+}
+@end
+
+// Comment écrire le mutateur de '_delegate' ?
+```
 
 ---
 
@@ -675,23 +680,25 @@ Cas le plus trivial
 
 Cas le plus trivial 
 
-	 //Comment faire ?
-	 
-	 @interface VuePersonnalisee : UIView {
-	 
-		id<UItableViewDelegate> _delegate ;
-	}
-	
-	@end
-	
-	@implementation VuePersonnalisee
-	
-	- (void) setDelegate:(id<UItableViewDelegate>) delegate
-	{
-		_delegate = delegate
-	}
-	
-	@end
+```objc
+     //Comment faire ?
+     
+     @interface VuePersonnalisee : UIView {
+     
+      id<UItableViewDelegate> _delegate ;
+    }
+    
+    @end
+    
+    @implementation VuePersonnalisee
+    
+    - (void) setDelegate:(id<UItableViewDelegate>) delegate
+    {
+      _delegate = delegate
+    }
+    
+    @end
+```
 
 ---
 
@@ -699,15 +706,17 @@ Cas le plus trivial
 
 But : garder l'ancienne valeur + relâcher l'ancienne valeur sans "leak"
 
-	 //Comment faire ?
-	 
-	 @interface HTTPRequest : NSObject {
-	 
-	 	NSMutableString* _buff 
-	}
-	@end
-	
-	// Comment écrire le mutateur de 'buff' sans fuite mémoire ?
+```objc
+   //Comment faire ?
+   
+   @interface HTTPRequest : NSObject {
+   
+    NSMutableString* _buff 
+  }
+  @end
+  
+  // Comment écrire le mutateur de 'buff' sans fuite mémoire ?
+```
 
 ---
 
@@ -715,27 +724,28 @@ But : garder l'ancienne valeur + relâcher l'ancienne valeur sans "leak"
 
 But : garder l'ancienne valeur + relâcher l'ancienne valeur sans "leaks"
 
-	 //Comment faire ?
-	 
-	 @interface HTTPRequest : NSObject {
-	 
-	 	NSMutableString* _buff 
-	}
-	@end
-	// Comment écrire le mutateur de 'buff' sans fuite mémoire ?
-	 
-	 @implementation HTTPRequest
-	 
-	 
-	 - (void) setBuff:(NSMutableString *) buff
-	 {
-	 	[buff retain];// OBLIGATOIRE : si buff == _buff
-	 	[_buff release];
-	 	_buff = buff;
-	 
-	 } 
-	 @end	 	 	 
-
+```objc
+ //Comment faire ?
+ 
+ @interface HTTPRequest : NSObject {
+ 
+  NSMutableString* _buff 
+}
+@end
+// Comment écrire le mutateur de 'buff' sans fuite mémoire ?
+ 
+ @implementation HTTPRequest
+ 
+ 
+ - (void) setBuff:(NSMutableString *) buff
+ {
+  [buff retain];// OBLIGATOIRE : si buff == _buff
+  [_buff release];
+  _buff = buff;
+ 
+ } 
+ @end      
+```
 
 ---
 
@@ -743,27 +753,27 @@ But : garder l'ancienne valeur + relâcher l'ancienne valeur sans "leaks"
 
 Même problématique que la référence forte simple
 
-	 //Comment faire ?
-	 
-	 @interface Personne : NSObject {
-	 
-	 	NSString * _nom 
-	}
-	@end
-	// Comment écrire le mutateur de 'buff' sans fuite mémoire ?
-	 
-	 @implementation Personne
-	 
-	 
-	 - (void) setNom:(NSString *) nom
-	 {
-	 	NSString * copy = [nom copy]; // OBLIGATOIRE : si nom == _nom car
-	 	[_nom release];               // si les objet sont immuables, ils utilisent
-	 	_nom = nom;                   // généralement des copies superficielles
-	 
-	 } 
-	 @end	 	 	 
-
+```objc
+ //Comment faire ?
+ 
+ @interface Personne : NSObject {
+ 
+  NSString * _nom 
+}
+@end
+// Comment écrire le mutateur de 'buff' sans fuite mémoire ?
+ 
+ @implementation Personne
+ 
+ - (void) setNom:(NSString *) nom
+ {
+  NSString * copy = [nom copy]; // OBLIGATOIRE : si nom == _nom car
+  [_nom release];               // si les objet sont immuables, ils utilisent
+  _nom = nom;                   // généralement des copies superficielles
+ 
+ } 
+ @end      
+```
 
 ---
 
@@ -771,35 +781,37 @@ Même problématique que la référence forte simple
 
 Il faut normalement éviter que deux objets possèdent chacun une référence forte l'un vers l'autre.
 
-	//Exemple
-	@interface A : NSObject {
-		B * _b;
-	}
-	@implementation A
-	-(void) setB:(B*)b{
-		[b retain];
-		_b release];
-		_b = b;
-	}
-	@end
-	@interface B : NSObject {
-		A * _a;
-	}
-	-(void) setA:(A*)a{
-		[a retain];
-		_a release];
-		_a = a;
-	}
+```objc
+  //Exemple
+  @interface A : NSObject {
+    B * _b;
+  }
+  @implementation A
+  -(void) setB:(B*)b{
+    [b retain];
+    _b release];
+    _b = b;
+  }
+  @end
+  @interface B : NSObject {
+    A * _a;
+  }
+  -(void) setA:(A*)a{
+    [a retain];
+    _a release];
+    _a = a;
+  }
 
-	A * a = [[A alloc] init]; // A RefCounter = 1
-	B * b = [[B alloc] init]; // B RefCounter = 1
-	
-	[a setB:b];// B RefCounter = 2
-	[b setA:a];// A RefCounter = 2
-	
-	[a release];// A RefCounter = 1  B RefCounter = 2
-	[b release];// B RefCounter = 1  A RefCounter = 1
-	//-> Leak potentiel
+  A * a = [[A alloc] init]; // A RefCounter = 1
+  B * b = [[B alloc] init]; // B RefCounter = 1
+  
+  [a setB:b];// B RefCounter = 2
+  [b setA:a];// A RefCounter = 2
+  
+  [a release];// A RefCounter = 1  B RefCounter = 2
+  [b release];// B RefCounter = 1  A RefCounter = 1
+  //-> Leak potentiel
+```
 
 ---
 
@@ -807,21 +819,23 @@ Il faut normalement éviter que deux objets possèdent chacun une référence fo
 
 ## Rappels
 
-*	Permet de créer **dynamiquement l'éxecution** des **mutateurs et accesseurs** sur **les variables d'instances**
-*	Originairement : 1 déclaration de **@property** = 1 déclaration de **@synthetize**
-*	Depuis XCode 4.4 le front-end **LLVM**, les déclaration de @synthetize sont automatiques
+* Permet de créer **dynamiquement l'éxecution** des **mutateurs et accesseurs** sur **les variables d'instances**
+* Originairement : 1 déclaration de **@property** = 1 déclaration de **@synthetize**
+* Depuis XCode 4.4 le front-end **LLVM**, les déclaration de @synthetize sont automatiques
 
 ---
 
 # Exemple
-	//Avant XCode 4.4
+
+```objc
+  //Avant XCode 4.4
      @interface Personne : NSObject {
      
-     	NSString * _nom;
-     	NSString * _prenom;
-     	NSMutableArray * _emails;
-     	
-     	Personne * _voisin;
+      NSString * _nom;
+      NSString * _prenom;
+      NSMutableArray * _emails;
+      
+      Personne * _voisin;
      }
      @property (copy) NSString * nom;
      @property (copy) NSString * prenom;
@@ -837,7 +851,8 @@ Il faut normalement éviter que deux objets possèdent chacun une référence fo
      @synthetize voisin = _voisin;
      
      @end 
-     
+``` 
+
 ---
 
 # Exemple
@@ -864,16 +879,17 @@ Il faut normalement éviter que deux objets possèdent chacun une référence fo
 
 # Types de propriétés
 
-*	**retain** : assignation **avec** transfert de propriété
-*	**assign** : assignation **sans** transfert de propriété
-*	**copy** : assignation d'une copie de l'objet
+* **retain** : assignation **avec** transfert de propriété
+* **assign** : assignation **sans** transfert de propriété
+* **copy** : assignation d'une copie de l'objet
 
 Le runtime implémentent **les mêmes mutateurs** que ceux vus précédemment
 
 ---
 
 # Attention types immuables
-  
+
+```javascript
     @interface Person : NSObject {
         NSString * _name;
     }
@@ -890,11 +906,13 @@ Le runtime implémentent **les mêmes mutateurs** que ceux vus précédemment
     p.name = someName;
 
     [someName setString:@"Debajit"];
+```
 
 Qu'attendrait t'on dans ce contexte ?
-    
+
 ---
-```objc
+
+```javascript
      @interface Person : NSObject {
         NSString * _name;
     }
@@ -925,10 +943,10 @@ Les types **immuables** doivent normalement utiliser des mutateurs avec référe
 
 # Introduction à l'ARC
 
-*	L'ARC **n'est pas** un ramasse-miette.
+* L'ARC **n'est pas** un ramasse-miette.
 *   Remplace le garbage collector instauré sur Mac OS X 10.5 à partir de 10.7
-*	Activer l'ARC = demander au compilateur d'écrire les messages **retain**, **release** et **autorelease** à votre place
-*	Inconvénients : pas d'action directe sur la gestion mémoire, non disponible sur les versions Mac < 10.7
+* Activer l'ARC = demander au compilateur d'écrire les messages **retain**, **release** et **autorelease** à votre place
+* Inconvénients : pas d'action directe sur la gestion mémoire, non disponible sur les versions Mac < 10.7
 
 ---
 
@@ -942,10 +960,10 @@ Les types **immuables** doivent normalement utiliser des mutateurs avec référe
 
 # Mots-clefs LLVM 
 
-*	\_\_strong
-*	\_\_weak
-*	\_\_autoreleasing
-*	\_\_unsafe_unretained
+* \_\_strong
+* \_\_weak
+* \_\_autoreleasing
+* \_\_unsafe_unretained
 
 ---
 
@@ -1019,7 +1037,7 @@ Référence faible sans transfert de propriété et pointeur mis à **nil** quan
             
 ---
 
-#	\_\_autoreleasing
+# \_\_autoreleasing
 
 Indique un objet passer par **référence (de type id \* )** et qui est envoyé dans le bassin de libération  en retour de fonction
 
@@ -1046,17 +1064,19 @@ L'ARC respecte de manière bête et méchante les rêgles de gestion mémoire à
 
 Les bassins de libération automatiques se déclarent avec @autorelease. L'ancienne déclaration est correcte mais moins efficace
 
+```objc
      //Beaucoup mieux
-	for(NSString * chemin in _chemins_a_copier)
+  for(NSString * chemin in _chemins_a_copier)
     {
-    	@autorelease
-    	{
-			NSString * _nouveau = [_destination stringByAppendingPathComponent:chemin];
-	
-		/* Longue opération */	
-	
-		}
-	}
+      @autorelease
+      {
+      NSString * _nouveau = [_destination stringByAppendingPathComponent:chemin];
+  
+    /* Longue opération */  
+  
+    }
+  }
+```
 
 ---
 
@@ -1075,29 +1095,29 @@ Les bassins de libération automatiques se déclarent avec @autorelease. L'ancie
 Même remarque que précédemment
 
 ```javascript
-	//Exemple
-	@interface A : NSObject
-	
-		@property(strong) B* b;
+  //Exemple
+  @interface A : NSObject
+  
+    @property(strong) B* b;
 
-	@end
-		
-	@interface B : NSObject
+  @end
+    
+  @interface B : NSObject
 
-		@property(strong) A* a;
-	
-	@end
+    @property(strong) A* a;
+  
+  @end
 
 
-	A* a = [[A alloc] init];
-	B* b = [[B alloc] init];
-	
-	A.b = b;
-	B.a = a;
-	
-	--> Leak potentiel
+  A* a = [[A alloc] init];
+  B* b = [[B alloc] init];
+  
+  A.b = b;
+  B.a = a;
+  
+  --> Leak potentiel
 ```
-	
+  
 ---
 
 # Aller plus loin
@@ -1110,4 +1130,3 @@ Même remarque que précédemment
 
 
 [5]:http://clang.llvm.org/docs/AutomaticReferenceCounting.html 
-
