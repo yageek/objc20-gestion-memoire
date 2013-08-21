@@ -1,4 +1,4 @@
-objc20-gestion-memoire
+Gestion mémoire en Objective-C 2.0
 ======================
-Presentation en sur la gestion mémoire en objective-C. Pour y accédez http://blog.yageek.net/objc20-gestion-memoire.
+Présentation en sur la gestion mémoire en Objective-C2.0. Pour y accédez http://blog.yageek.net/objc20-gestion-memoire.
 
